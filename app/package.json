@@ -1,0 +1,23 @@
+{
+  "name": "trellis",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:ios-web": "node scripts/build-ios-web.mjs",
+    "cap:sync": "npm run build:ios-web && cap sync ios",
+    "cap:add:ios": "npm run build:ios-web && cap add ios",
+    "cap:open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.6.0",
+    "@capacitor/ios": "8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.0",
+    "playwright-core": "^1.65.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

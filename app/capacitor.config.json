@@ -1,0 +1,10 @@
+{
+  "appId": "com.example.trellis",
+  "appName": "Trellis",
+  "webDir": "ios-web",
+  "backgroundColor": "#12100E",
+  "loggingBehavior": "none",
+  "ios": {
+    "contentInset": "never"
+  }
+}

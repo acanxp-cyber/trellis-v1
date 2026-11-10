@@ -1,0 +1,25 @@
+name: Check App Store Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        required: true
+        type: string
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_STORE_CONNECT_APP_ID: ${{ secrets.APP_STORE_CONNECT_APP_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: node scripts/check_app_store_build.mjs

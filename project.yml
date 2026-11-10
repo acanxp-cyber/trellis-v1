@@ -1,0 +1,71 @@
+name: Trellis
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    iOS: "18.0"
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CLANG_ENABLE_MODULES: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  Trellis:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Trellis
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.trellis
+        PRODUCT_NAME: Trellis
+        INFOPLIST_FILE: Trellis/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  TrellisTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: TrellisTests
+    dependencies:
+      - target: Trellis
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.trellis.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Trellis.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Trellis"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Trellis:
+    build:
+      targets:
+        Trellis: all
+        TrellisTests:
+          - test
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - TrellisTests
+    archive:
+      config: Release
+

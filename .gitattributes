@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.swift text eol=lf
+*.pbxproj text eol=lf
+*.xcscheme text eol=lf
+*.plist text eol=lf
+*.xcprivacy text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+

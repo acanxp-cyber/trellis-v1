@@ -1,0 +1,60 @@
+name: iOS Native CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-native-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Validate plists
+        run: |
+          plutil -lint Trellis/Info.plist
+          plutil -lint Trellis/Resources/PrivacyInfo.xcprivacy
+
+      - name: Build for simulator
+        run: |
+          xcodebuild \
+            -project Trellis.xcodeproj \
+            -scheme Trellis \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Run tests
+        run: |
+          device="$(xcrun simctl list devices available |
+            sed -n 's/.*(iPhone[^)]*).*/\\1/p' |
+            head -n 1)"
+          test -n "$device"
+          xcodebuild \
+            -project Trellis.xcodeproj \
+            -scheme Trellis \
+            -destination "platform=iOS Simulator,name=$device" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
