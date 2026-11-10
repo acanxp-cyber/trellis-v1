@@ -21,4 +21,6 @@ ios-web/
 AuthKey_*.p8
 .env
 .env.*
+apple-secrets/
+secure/
 

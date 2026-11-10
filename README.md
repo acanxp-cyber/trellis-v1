@@ -11,6 +11,7 @@
 1. [架构红线](docs/ADR-0001-native-swiftui-health-boundary.md)
 2. [原生 MVP 实施说明](docs/NATIVE-MVP.md)
 3. [上线前审阅报告](审阅报告.md)
+4. [App Store 上架资料表](App-Store-上架资料表.md)
 
 核心决策只有一条：
 
