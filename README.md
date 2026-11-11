@@ -1,5 +1,8 @@
 # Trellis
 
+App Store 展示名：`SOMETHING`  
+内部项目名与 Bundle ID：`Trellis` / `com.acanxp.trellis`
+
 原生 SwiftUI 路线的 V1 工程基线。
 
 当前状态：**可继续开发的 MVP 源码与 Xcode 工程，尚未完成 iOS 编译和真机验证。**
@@ -50,7 +53,7 @@
 - StoreKit；
 - 正式隐私政策、支持页和 App Store 文案。
 
-`com.example.trellis` 仍是占位 Bundle ID，不可提交 App Store。
+`com.acanxp.trellis` 已配置为正式 Bundle ID。
 
 ---
 

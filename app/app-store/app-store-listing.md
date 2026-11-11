@@ -2,7 +2,7 @@
 
 ## App Information
 
-- Name: `Trellis`
+- Name: `SOMETHING`
 - Subtitle: `__SUBTITLE__`
 - Primary category: `__CATEGORY__`
 - Secondary category: `__SECONDARY_CATEGORY__`
@@ -20,7 +20,7 @@
 
 Many [target users] arrive at [situation] where they must answer [client question]. They can complete the task, but need a reliable way to measure, explain and hand over the result.
 
-`Trellis` provides one field workflow:
+`SOMETHING` provides one field workflow:
 
 - [Step 1: measure/capture]
 - [Step 2: interpret/organize]
