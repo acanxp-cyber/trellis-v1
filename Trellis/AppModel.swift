@@ -73,6 +73,32 @@ final class AppModel {
     }
 
     @discardableResult
+    func addScheduledTasks(_ drafts: [VoiceTaskDraft]) async -> Bool {
+        let tasks = drafts.compactMap { draft -> GrowthTask? in
+            let title = draft.title.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            guard !title.isEmpty else {
+                return nil
+            }
+            return GrowthTask(
+                id: draft.id,
+                title: title,
+                area: "日程",
+                scheduledAt: draft.scheduledAt,
+                reminderAt: draft.reminderAt
+            )
+        }
+        guard !tasks.isEmpty else {
+            return false
+        }
+
+        var next = data
+        next.tasks.append(contentsOf: tasks)
+        return await commit(next)
+    }
+
+    @discardableResult
     func addRecord(text: String) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
