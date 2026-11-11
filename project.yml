@@ -25,11 +25,11 @@ targets:
           - Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.trellis
+        PRODUCT_BUNDLE_IDENTIFIER: com.acanxp.trellis
         PRODUCT_NAME: Trellis
         INFOPLIST_FILE: Trellis/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
@@ -47,7 +47,7 @@ targets:
       - target: Trellis
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.trellis.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.acanxp.trellis.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Trellis.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Trellis"
         BUNDLE_LOADER: "$(TEST_HOST)"

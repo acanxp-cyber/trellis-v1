@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct DataExportDocument: FileDocument {
-    static var readableContentTypes: [UTType] = [.json]
+    static let readableContentTypes: [UTType] = [.json]
 
     var data: Data
 
