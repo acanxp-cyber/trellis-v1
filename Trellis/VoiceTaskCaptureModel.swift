@@ -14,30 +14,10 @@ final class VoiceTaskCaptureModel {
     var errorMessage: String?
 
     private let parser = VoiceTaskParser()
-    private let bufferConverter = AudioBufferConverter()
-
+    private var modernSession: AnyObject?
     private var audioEngine: AVAudioEngine?
     private var hasInstalledTap = false
     private var isStopping = false
-
-    @available(iOS 26.0, *)
-    private var speechAnalyzer: SpeechAnalyzer?
-    @available(iOS 26.0, *)
-    private var speechTranscriber: SpeechTranscriber?
-    @available(iOS 26.0, *)
-    private var analyzerInputBuilder: AsyncStream<AnalyzerInput>.Continuation?
-    @available(iOS 26.0, *)
-    private var analyzerFormat: AVAudioFormat?
-    @available(iOS 26.0, *)
-    private var analyzerResultTask: Task<Void, Never>?
-    @available(iOS 26.0, *)
-    private var audioInputBuilder: AsyncStream<AVAudioPCMBuffer>.Continuation?
-    @available(iOS 26.0, *)
-    private var audioPipelineTask: Task<Void, Never>?
-    @available(iOS 26.0, *)
-    private var finalizedText = ""
-    @available(iOS 26.0, *)
-    private var volatileText = ""
 
     private var legacyRequest: SFSpeechAudioBufferRecognitionRequest?
     private var legacyTask: SFSpeechRecognitionTask?
@@ -56,6 +36,7 @@ final class VoiceTaskCaptureModel {
         errorMessage = nil
         statusMessage = nil
         resetResult()
+        resetActiveCapture()
         defer { isStarting = false }
 
         guard await requestSpeechPermission(), await requestMicrophonePermission() else {
@@ -65,7 +46,19 @@ final class VoiceTaskCaptureModel {
 
         do {
             if #available(iOS 26.0, *) {
-                try await startModernCapture()
+                statusMessage = "正在准备中文离线语音模型…"
+                let session = ModernSpeechCaptureSession(
+                    onTranscript: { [weak self] text in
+                        self?.transcript = text
+                    },
+                    onError: { [weak self] message in
+                        self?.errorMessage = message
+                        self?.isRecording = false
+                    }
+                )
+                modernSession = session
+                try await session.start()
+                statusMessage = nil
             } else {
                 try startLegacyCapture()
             }
@@ -73,6 +66,7 @@ final class VoiceTaskCaptureModel {
         } catch {
             resetActiveCapture()
             isRecording = false
+            statusMessage = nil
             errorMessage = Self.message(for: error)
         }
     }
@@ -86,14 +80,17 @@ final class VoiceTaskCaptureModel {
         isStarting = true
         isRecording = false
 
-        if #available(iOS 26.0, *) {
-            await finishModernCapture()
+        if #available(iOS 26.0, *),
+           let session = modernSession as? ModernSpeechCaptureSession {
+            transcript = await session.finish()
+            modernSession = nil
         } else {
             stopLegacyCapture()
         }
 
         isStarting = false
         isStopping = false
+        statusMessage = nil
         parseTranscriptIfNeeded(force: true)
     }
 
@@ -102,6 +99,7 @@ final class VoiceTaskCaptureModel {
         isRecording = false
         isStarting = false
         isStopping = false
+        statusMessage = nil
     }
 
     func reset() {
@@ -109,160 +107,6 @@ final class VoiceTaskCaptureModel {
         transcript = ""
         drafts = []
         errorMessage = nil
-        statusMessage = nil
-    }
-
-    @available(iOS 26.0, *)
-    private func startModernCapture() async throws {
-        guard SpeechTranscriber.isAvailable else {
-            throw VoiceCaptureError.modelUnavailable
-        }
-
-        let requestedLocale = Locale(identifier: "zh-CN")
-        let supportedLocales = await SpeechTranscriber.supportedLocales
-        guard let locale = SpeechLocaleSupport.match(
-            requestedLocale,
-            in: supportedLocales
-        ) else {
-            throw VoiceCaptureError.localeUnavailable
-        }
-
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [.volatileResults],
-            attributeOptions: []
-        )
-
-        let installedLocales = await SpeechTranscriber.installedLocales
-        if SpeechLocaleSupport.match(locale, in: installedLocales) == nil {
-            statusMessage = "首次使用，正在下载中文离线语音模型…"
-            if let request = try await AssetInventory.assetInstallationRequest(
-                supporting: [transcriber]
-            ) {
-                try await request.downloadAndInstall()
-            }
-        }
-
-        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(
-            compatibleWith: [transcriber]
-        ) else {
-            throw VoiceCaptureError.audioFormatUnavailable
-        }
-
-        statusMessage = "正在启动麦克风…"
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        let (inputSequence, inputBuilder) = AsyncStream<AnalyzerInput>
-            .makeStream(bufferingPolicy: .unbounded)
-
-        speechTranscriber = transcriber
-        speechAnalyzer = analyzer
-        analyzerInputBuilder = inputBuilder
-        analyzerFormat = format
-        finalizedText = ""
-        volatileText = ""
-
-        analyzerResultTask = Task { [weak self] in
-            do {
-                for try await result in transcriber.results {
-                    guard let self else {
-                        return
-                    }
-                    self.consume(result)
-                }
-            } catch {
-                guard let self, !self.isStopping else {
-                    return
-                }
-                self.errorMessage = Self.message(for: error)
-                self.stopAudioCapture()
-            }
-        }
-
-        try await analyzer.start(inputSequence: inputSequence)
-
-        let (audioStream, audioBuilder) = AsyncStream<AVAudioPCMBuffer>
-            .makeStream(bufferingPolicy: .unbounded)
-        audioInputBuilder = audioBuilder
-        audioPipelineTask = Task { [weak self] in
-            for await buffer in audioStream {
-                guard let self else {
-                    return
-                }
-                self.consumeAudio(buffer)
-            }
-        }
-
-        try startAudioCapture { buffer in
-            audioBuilder.yield(buffer)
-        }
-        statusMessage = nil
-    }
-
-    @available(iOS 26.0, *)
-    private func consume(_ result: SpeechTranscriber.Result) {
-        let text = String(result.text.characters)
-        if result.isFinal {
-            finalizedText += text
-            volatileText = ""
-        } else {
-            volatileText = text
-        }
-        transcript = finalizedText + volatileText
-    }
-
-    @available(iOS 26.0, *)
-    private func consumeAudio(_ buffer: AVAudioPCMBuffer) {
-        guard
-            let analyzerInputBuilder,
-            let analyzerFormat
-        else {
-            return
-        }
-
-        do {
-            let converted = try bufferConverter.convert(
-                buffer,
-                to: analyzerFormat
-            )
-            analyzerInputBuilder.yield(
-                AnalyzerInput(buffer: converted)
-            )
-        } catch {
-            guard !isStopping else {
-                return
-            }
-            errorMessage = "语音转写中断了，请重试。"
-            stopAudioCapture()
-            isRecording = false
-        }
-    }
-
-    @available(iOS 26.0, *)
-    private func finishModernCapture() async {
-        stopAudioCapture()
-        audioInputBuilder?.finish()
-        audioInputBuilder = nil
-        audioPipelineTask?.cancel()
-        audioPipelineTask = nil
-        analyzerInputBuilder?.finish()
-        analyzerInputBuilder = nil
-
-        do {
-            try await speechAnalyzer?.finalizeAndFinishThroughEndOfInput()
-        } catch {
-            errorMessage = "语音转写结束失败，请重试。"
-        }
-
-        try? await Task.sleep(for: .milliseconds(250))
-        analyzerResultTask?.cancel()
-        analyzerResultTask = nil
-        speechAnalyzer = nil
-        speechTranscriber = nil
-        analyzerFormat = nil
-        finalizedText = ""
-        volatileText = ""
-        deactivateAudioSession()
     }
 
     private func startLegacyCapture() throws {
@@ -282,7 +126,7 @@ final class VoiceTaskCaptureModel {
         request.requiresOnDeviceRecognition = true
         request.addsPunctuation = true
 
-        try startAudioCapture { [weak self] buffer in
+        try startAudioCapture { buffer in
             request.append(buffer)
         }
 
@@ -358,7 +202,6 @@ final class VoiceTaskCaptureModel {
             stopAudioCapture()
             throw VoiceCaptureError.audioEngineFailed
         }
-
     }
 
     private func stopAudioCapture() {
@@ -378,34 +221,17 @@ final class VoiceTaskCaptureModel {
     }
 
     private func resetActiveCapture() {
-        if #available(iOS 26.0, *) {
-            stopAudioCapture()
-            audioInputBuilder?.finish()
-            audioInputBuilder = nil
-            audioPipelineTask?.cancel()
-            audioPipelineTask = nil
-            analyzerInputBuilder?.finish()
-            analyzerInputBuilder = nil
-            analyzerResultTask?.cancel()
-            analyzerResultTask = nil
-            speechAnalyzer = nil
-            speechTranscriber = nil
-            analyzerFormat = nil
-            finalizedText = ""
-            volatileText = ""
-        } else {
-            stopLegacyCapture()
+        if #available(iOS 26.0, *),
+           let session = modernSession as? ModernSpeechCaptureSession {
+            session.cancel()
         }
-        deactivateAudioSession()
+        modernSession = nil
+        stopLegacyCapture()
     }
 
     private func resetResult() {
         transcript = ""
         drafts = []
-        if #available(iOS 26.0, *) {
-            finalizedText = ""
-            volatileText = ""
-        }
     }
 
     private func parseTranscriptIfNeeded(force: Bool = false) {
@@ -451,6 +277,10 @@ final class VoiceTaskCaptureModel {
         if let error = error as? VoiceCaptureError {
             return error.userMessage
         }
+        if #available(iOS 26.0, *),
+           let error = error as? ModernSpeechError {
+            return error.userMessage
+        }
 
         let nsError = error as NSError
         if nsError.domain == "kAFAssistantErrorDomain" {
@@ -462,21 +292,15 @@ final class VoiceTaskCaptureModel {
 
 private enum VoiceCaptureError: Error {
     case modelUnavailable
-    case localeUnavailable
     case noAudioInput
-    case audioFormatUnavailable
     case audioEngineFailed
 
     var userMessage: String {
         switch self {
         case .modelUnavailable:
-            return "中文离线语音模型准备失败。请检查网络，稍后再试。"
-        case .localeUnavailable:
-            return "当前系统版本不支持中文离线转写。请更新到最新 iOS 后重试。"
+            return "当前系统的旧版语音组件不支持中文离线转写。请更新到 iOS 26 后重试。"
         case .noAudioInput:
             return "没有检测到可用麦克风，请稍后重试。"
-        case .audioFormatUnavailable:
-            return "设备暂时无法提供语音处理所需的音频格式。"
         case .audioEngineFailed:
             return "麦克风启动失败，请关闭其他录音应用后重试。"
         }
