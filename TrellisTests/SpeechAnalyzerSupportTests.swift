@@ -94,12 +94,11 @@ final class SpeechAnalyzerSupportTests: XCTestCase {
             return transcript
         }
 
-        try await analyzer.start(inputSequence: input)
-        let analyzerFormat = try XCTUnwrap(
-            await SpeechAnalyzer.bestAvailableAudioFormat(
-                compatibleWith: [transcriber]
-            )
+        let bestFormat = await SpeechAnalyzer.bestAvailableAudioFormat(
+            compatibleWith: [transcriber]
         )
+        let analyzerFormat = try XCTUnwrap(bestFormat)
+        try await analyzer.start(inputSequence: input)
         let converter = AudioBufferConverter()
         let chunkSize: AVAudioFrameCount = 4_096
 
