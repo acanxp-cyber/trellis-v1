@@ -33,8 +33,9 @@ actor LocalAppRepository: AppRepository {
     private let fileURL: URL
     private var cachedData: AppData
 
-    init(fileURL: URL, fileManager: FileManager = .default) throws {
+    init(fileURL: URL) throws {
         self.fileURL = fileURL
+        let fileManager = FileManager.default
 
         do {
             try fileManager.createDirectory(
@@ -84,7 +85,7 @@ actor LocalAppRepository: AppRepository {
             isDirectory: true
         )
         let fileURL = directory.appendingPathComponent("app-data-v1.json")
-        return try LocalAppRepository(fileURL: fileURL, fileManager: fileManager)
+        return try LocalAppRepository(fileURL: fileURL)
     }
 
     func load() async throws -> AppData {
