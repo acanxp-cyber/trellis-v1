@@ -1,0 +1,37 @@
+# Trellis 上架待补
+
+| # | 项目 | 当前状态 | 需要你处理 |
+| --- | --- | --- | --- |
+| 1 | Apple Team ID | 未取得 | 打开 Apple Developer → Account → Membership details → Team ID，把值填在下方 |
+| 2 | Apple 签名材料 | 新仓库没有 Secrets，本机也没有文件 | 将上次的 p8、p12、描述文件和密码放入 `F:\claude\Today\apple-secrets\`，或重新添加到 GitHub 新仓库 Secrets |
+| 3 | 中国大陆 | 已填“未备案” | 选择：`首版不发大陆` / `等备案后发大陆` |
+| 4 | ¥1 付费 App | 账户级协议可能沿用上次，但未确认 | 填：`付费协议/税务/收款账户都已完成` 或 `未完成` |
+
+---
+
+## 填写区
+
+Apple Team ID：
+
+```text
+【待填】
+```
+
+签名材料：
+
+```text
+【已放入 apple-secrets / 已添加到 GitHub Secrets / 需要你协助复制】
+```
+
+中国大陆：
+
+```text
+【首版不发大陆 / 等备案后发大陆】
+```
+
+付费账户：
+
+```text
+【都已完成 / 未完成】
+```
+
