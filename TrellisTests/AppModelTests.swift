@@ -42,6 +42,33 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.data.reviews.count, 1)
         XCTAssertEqual(model.data.reviews[0].focus, ["一", "二", "三"])
     }
+
+    func testAddScheduledTaskPersistsTimeAndReminder() async throws {
+        let repository = InMemoryRepository()
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+
+        let scheduledAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let draft = VoiceTaskDraft(
+            title: "到会议室开会",
+            scheduledAt: scheduledAt,
+            reminderLeadMinutes: 5
+        )
+
+        let didAdd = await model.addScheduledTasks([draft])
+
+        XCTAssertTrue(didAdd)
+        let task = try XCTUnwrap(model.data.tasks.first)
+        XCTAssertEqual(task.title, "到会议室开会")
+        XCTAssertEqual(task.scheduledAt, scheduledAt)
+        XCTAssertEqual(
+            task.reminderAt,
+            scheduledAt.addingTimeInterval(-300)
+        )
+
+        let saved = await repository.currentData()
+        XCTAssertEqual(saved.tasks, model.data.tasks)
+    }
 }
 
 private actor InMemoryRepository: AppRepository {
