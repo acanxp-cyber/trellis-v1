@@ -6,19 +6,25 @@ struct GrowthTask: Identifiable, Codable, Sendable, Equatable {
     var area: String
     var createdAt: Date
     var completedAt: Date?
+    var scheduledAt: Date?
+    var reminderAt: Date?
 
     init(
         id: UUID = UUID(),
         title: String,
         area: String = "成长",
         createdAt: Date = .now,
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        scheduledAt: Date? = nil,
+        reminderAt: Date? = nil
     ) {
         self.id = id
         self.title = title
         self.area = area
         self.createdAt = createdAt
         self.completedAt = completedAt
+        self.scheduledAt = scheduledAt
+        self.reminderAt = reminderAt
     }
 
     var isCompleted: Bool {
