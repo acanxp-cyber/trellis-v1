@@ -165,7 +165,21 @@ final class AppModel {
     var openTasks: [GrowthTask] {
         data.tasks
             .filter { !$0.isCompleted }
-            .sorted { $0.createdAt > $1.createdAt }
+            .sorted { left, right in
+                switch (left.scheduledAt, right.scheduledAt) {
+                case let (leftDate?, rightDate?):
+                    if leftDate == rightDate {
+                        return left.createdAt > right.createdAt
+                    }
+                    return leftDate < rightDate
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return left.createdAt > right.createdAt
+                }
+            }
     }
 
     var completedTaskCount: Int {
