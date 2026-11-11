@@ -85,10 +85,10 @@ struct VoiceTaskCaptureView: View {
     private var recordingControl: some View {
         VStack(spacing: 14) {
             Button {
-                if capture.isRecording {
-                    capture.stop()
-                } else {
-                    Task {
+                Task {
+                    if capture.isRecording {
+                        await capture.stop()
+                    } else {
                         await capture.start()
                     }
                 }
@@ -138,6 +138,9 @@ struct VoiceTaskCaptureView: View {
     }
 
     private var recordingLabel: String {
+        if let statusMessage = capture.statusMessage {
+            return statusMessage
+        }
         if capture.isStarting {
             return "正在准备麦克风…"
         }
