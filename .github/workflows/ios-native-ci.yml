@@ -47,7 +47,7 @@ jobs:
       - name: Run tests
         run: |
           device="$(xcrun simctl list devices available |
-            sed -n 's/.*(iPhone[^)]*).*/\\1/p' |
+            sed -En 's/^[[:space:]]*(iPhone[^(]+).*/\1/p' |
             head -n 1)"
           test -n "$device"
           xcodebuild \
