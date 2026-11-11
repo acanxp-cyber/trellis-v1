@@ -69,6 +69,29 @@ final class AppModelTests: XCTestCase {
         let saved = await repository.currentData()
         XCTAssertEqual(saved.tasks, model.data.tasks)
     }
+
+    func testOpenTasksSortTimedTasksChronologically() async {
+        let repository = InMemoryRepository()
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+
+        let later = VoiceTaskDraft(
+            title: "晚一点",
+            scheduledAt: Date(timeIntervalSince1970: 1_800_000_600)
+        )
+        let earlier = VoiceTaskDraft(
+            title: "先做",
+            scheduledAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        await model.addScheduledTasks([later, earlier])
+        await model.addTask(title: "没有时间的任务")
+
+        XCTAssertEqual(
+            model.openTasks.map(\.title),
+            ["先做", "晚一点", "没有时间的任务"]
+        )
+    }
 }
 
 private actor InMemoryRepository: AppRepository {
