@@ -4,6 +4,8 @@
 路线：原生 SwiftUI  
 结论：**Blocked；工程骨架已建立，但尚未完成 iOS 编译、真机和商店提交准备。**
 
+首发地区决定：**不发布中国大陆，暂缓工信部 App 备案。**
+
 详细架构红线见 [ADR-0001](docs/ADR-0001-native-swiftui-health-boundary.md)，实施顺序见 [NATIVE-MVP](docs/NATIVE-MVP.md)。
 
 ---

@@ -66,4 +66,4 @@ Describe every permission and why it is needed. Never claim the app never access
 - Model: `__PAID_DOWNLOAD_OR_FREE__`
 - Price: `__PRICE__`
 - Subscription: `__YES_NO__`
-- Markets: `__MARKETS__`
+- Markets: `Hong Kong, Macao, Taiwan, and other available territories; mainland China excluded for v1`
