@@ -178,6 +178,23 @@ jobs:
             -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
 
+      - name: Upload build to App Store Connect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          cp "$API_KEY_PATH" \
+            "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          ipa_path="$(find "$RUNNER_TEMP/export" -maxdepth 1 -name '*.ipa' -print -quit)"
+          test -n "$ipa_path"
+          xcrun altool \
+            --upload-app \
+            --file "$ipa_path" \
+            --type ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --output-format json
+
       - name: Upload signed IPA
         uses: actions/upload-artifact@v4
         with:
