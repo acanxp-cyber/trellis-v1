@@ -70,9 +70,11 @@ const bundleResponse = await api(
 const appResponse = await api(
   `/v1/apps?filter[bundleId]=${encodedBundle}&limit=10`,
 );
+const allAppsResponse = await api("/v1/apps?limit=200");
 const certificateResponse = await api(
   "/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&limit=200",
 );
+const allCertificateResponse = await api("/v1/certificates?limit=200");
 
 const bundleId = bundleResponse.data?.[0] ?? null;
 let profiles = [];
@@ -97,9 +99,23 @@ console.log(JSON.stringify({
     sku: app.attributes?.sku,
     primaryLocale: app.attributes?.primaryLocale,
   })),
+  allApps: (allAppsResponse.data ?? []).map((app) => ({
+    id: app.id,
+    name: app.attributes?.name,
+    bundleId: app.attributes?.bundleId,
+    sku: app.attributes?.sku,
+    primaryLocale: app.attributes?.primaryLocale,
+  })),
   certificates: (certificateResponse.data ?? []).map((certificate) => ({
     id: certificate.id,
     name: certificate.attributes?.name,
+    serialNumber: certificate.attributes?.serialNumber,
+    expirationDate: certificate.attributes?.expirationDate,
+  })),
+  allCertificates: (allCertificateResponse.data ?? []).map((certificate) => ({
+    id: certificate.id,
+    name: certificate.attributes?.name,
+    certificateType: certificate.attributes?.certificateType,
     serialNumber: certificate.attributes?.serialNumber,
     expirationDate: certificate.attributes?.expirationDate,
   })),
