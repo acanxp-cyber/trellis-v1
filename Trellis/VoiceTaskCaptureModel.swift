@@ -294,7 +294,9 @@ enum VoiceCapturePermissions {
     }
 
     static func value(
-        from request: (@escaping @Sendable (Bool) -> Void) -> Void
+        from request: @escaping @Sendable (
+            @escaping @Sendable (Bool) -> Void
+        ) -> Void
     ) async -> Bool {
         await withCheckedContinuation { continuation in
             request { result in
