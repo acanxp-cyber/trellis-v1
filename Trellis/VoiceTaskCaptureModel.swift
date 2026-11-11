@@ -39,7 +39,9 @@ final class VoiceTaskCaptureModel {
         resetActiveCapture()
         defer { isStarting = false }
 
-        guard await requestSpeechPermission(), await requestMicrophonePermission() else {
+        guard await VoiceCapturePermissions.requestSpeechRecognition(),
+              await VoiceCapturePermissions.requestMicrophone()
+        else {
             errorMessage = "需要麦克风和语音识别权限。请到系统设置中允许后重试。"
             return
         }
@@ -248,31 +250,6 @@ final class VoiceTaskCaptureModel {
         }
     }
 
-    private func requestSpeechPermission() async -> Bool {
-        switch SFSpeechRecognizer.authorizationStatus() {
-        case .authorized:
-            return true
-        case .denied, .restricted:
-            return false
-        case .notDetermined:
-            return await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { status in
-                    continuation.resume(returning: status == .authorized)
-                }
-            }
-        @unknown default:
-            return false
-        }
-    }
-
-    private func requestMicrophonePermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
-    }
-
     private static func message(for error: Error) -> String {
         if let error = error as? VoiceCaptureError {
             return error.userMessage
@@ -287,6 +264,43 @@ final class VoiceTaskCaptureModel {
             return "没有听清，请靠近手机再说一次。"
         }
         return "语音识别中断了，请重试。"
+    }
+}
+
+enum VoiceCapturePermissions {
+    static func requestSpeechRecognition() async -> Bool {
+        switch SFSpeechRecognizer.authorizationStatus() {
+        case .authorized:
+            return true
+        case .denied, .restricted:
+            return false
+        case .notDetermined:
+            return await value { finish in
+                SFSpeechRecognizer.requestAuthorization { status in
+                    finish(status == .authorized)
+                }
+            }
+        @unknown default:
+            return false
+        }
+    }
+
+    static func requestMicrophone() async -> Bool {
+        await value { finish in
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                finish(granted)
+            }
+        }
+    }
+
+    static func value(
+        from request: (@escaping @Sendable (Bool) -> Void) -> Void
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            request { result in
+                continuation.resume(returning: result)
+            }
+        }
     }
 }
 

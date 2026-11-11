@@ -55,7 +55,11 @@ final class SpeechAnalyzerSupportTests: XCTestCase {
 
     @available(iOS 26.0, *)
     func testChineseSpeechAnalyzerTranscribesBundledAudio() async throws {
-        XCTAssertTrue(SpeechTranscriber.isAvailable)
+        guard SpeechTranscriber.isAvailable else {
+            throw XCTSkip(
+                "SpeechTranscriber is unavailable on this simulator or device."
+            )
+        }
 
         let locale = Locale(identifier: "zh-CN")
         let transcriber = SpeechTranscriber(
