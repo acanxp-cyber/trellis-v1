@@ -56,5 +56,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$device_id" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
+            -only-testing:TrellisTests \
             test
+
 

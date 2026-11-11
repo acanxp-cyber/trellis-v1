@@ -1,0 +1,76 @@
+name: App Store Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Select iPhone Pro Max
+        shell: bash
+        run: |
+          device_id="$(xcrun simctl list devices available -j |
+            jq -r '.devices[][] |
+              select(.name | contains("iPhone") and contains("Pro Max")) |
+              .udid' |
+            head -n 1)"
+          test -n "$device_id"
+          echo "DEVICE_ID=$device_id" >> "$GITHUB_ENV"
+
+      - name: Prepare simulator
+        shell: bash
+        run: |
+          xcrun simctl boot "$DEVICE_ID" || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl status_bar "$DEVICE_ID" override \
+            --time "9:41" \
+            --batteryState charged \
+            --batteryLevel 100 \
+            --wifiBars 3 \
+            --cellularBars 4
+
+      - name: Capture screenshots
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/Screenshots.xcresult"
+          xcodebuild \
+            -project Trellis.xcodeproj \
+            -scheme Trellis \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/Screenshots.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:TrellisUITests/ScreenshotUITests/testCaptureScreenshots \
+            test
+
+      - name: Export attachments
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/screenshots"
+          xcrun xcresulttool export attachments \
+            --path "$RUNNER_TEMP/Screenshots.xcresult" \
+            --output-path "$RUNNER_TEMP/screenshots"
+          find "$RUNNER_TEMP/screenshots" -type f -maxdepth 2 -print
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SOMETHING-app-store-screenshots
+          path: ${{ runner.temp }}/screenshots
+          retention-days: 14
+

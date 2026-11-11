@@ -54,12 +54,28 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Trellis.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Trellis"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  TrellisUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: TrellisUITests
+    dependencies:
+      - target: Trellis
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.acanxp.trellis.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Trellis
+
 schemes:
   Trellis:
     build:
       targets:
         Trellis: all
         TrellisTests:
+          - test
+        TrellisUITests:
           - test
     run:
       config: Debug
@@ -68,6 +84,7 @@ schemes:
       gatherCoverageData: true
       targets:
         - TrellisTests
+        - TrellisUITests
     archive:
       config: Release
 

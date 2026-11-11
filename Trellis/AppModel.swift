@@ -16,6 +16,10 @@ final class AppModel {
     }
 
     static func live() -> AppModel {
+        if ProcessInfo.processInfo.environment["TRELLIS_UI_TEST"] == "1" {
+            return AppModel(repository: UITestAppRepository())
+        }
+
         do {
             return AppModel(repository: try LocalAppRepository.makeDefault())
         } catch {
