@@ -15,6 +15,7 @@ final class LocalAppRepositoryTests: XCTestCase {
         expected.tasks = [
             GrowthTask(
                 title: "完成原生持久化",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000),
                 completedAt: Date(timeIntervalSince1970: 1_700_000_000)
             ),
         ]
