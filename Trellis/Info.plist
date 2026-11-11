@@ -22,6 +22,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>用于把你口述的日程分成任务；录音不会保存或上传。</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于在本机把口述内容识别成任务和时间。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

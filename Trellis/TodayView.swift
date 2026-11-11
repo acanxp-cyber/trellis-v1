@@ -3,12 +3,14 @@ import SwiftUI
 struct TodayView: View {
     @Environment(AppModel.self) private var model
     @State private var isAddingTask = false
+    @State private var isCapturingVoice = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     header
+                    voiceCaptureButton
 
                     HStack(spacing: 12) {
                         StatTile(
@@ -65,6 +67,10 @@ struct TodayView: View {
                 }
                 .presentationDetents([.medium])
             }
+            .sheet(isPresented: $isCapturingVoice) {
+                VoiceTaskCaptureView()
+                    .presentationDetents([.large])
+            }
         }
     }
 
@@ -86,6 +92,44 @@ struct TodayView: View {
                 .foregroundStyle(Color.trellisBone)
         }
         .padding(.vertical, 8)
+    }
+
+    private var voiceCaptureButton: some View {
+        Button {
+            isCapturingVoice = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.trellisBrass)
+                        .frame(width: 58, height: 58)
+
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Color.trellisInk)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("语音安排")
+                        .font(.system(.headline, design: .serif))
+                        .foregroundStyle(Color.trellisBone)
+
+                    Text("一次说完，自动拆成任务、时间和提醒")
+                        .font(.caption)
+                        .foregroundStyle(Color.trellisAsh)
+                }
+
+                Spacer(minLength: 6)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.trellisAsh)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .trellisCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("voice-task-capture")
     }
 
     private var completedSection: some View {
@@ -139,6 +183,28 @@ private struct TaskRow: View {
                 Text(task.area)
                     .font(.caption)
                     .foregroundStyle(Color.trellisAsh)
+
+                if let scheduledAt = task.scheduledAt {
+                    HStack(spacing: 8) {
+                        Label(
+                            scheduledAt.formatted(
+                                .dateTime.hour().minute()
+                            ),
+                            systemImage: "clock"
+                        )
+
+                        if let reminderAt = task.reminderAt {
+                            Label(
+                                "提醒 " + reminderAt.formatted(
+                                    .dateTime.hour().minute()
+                                ),
+                                systemImage: "bell"
+                            )
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.trellisBrass)
+                }
             }
 
             Spacer(minLength: 8)
