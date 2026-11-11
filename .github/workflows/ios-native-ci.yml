@@ -46,14 +46,14 @@ jobs:
 
       - name: Run tests
         run: |
-          device="$(xcrun simctl list devices available |
-            sed -En 's/^[[:space:]]*(iPhone[^(]+).*/\1/p' |
+          device_id="$(xcrun simctl list devices available -j |
+            jq -r '.devices[][] | select(.name | startswith("iPhone")) | .udid' |
             head -n 1)"
-          test -n "$device"
+          test -n "$device_id"
           xcodebuild \
             -project Trellis.xcodeproj \
             -scheme Trellis \
-            -destination "platform=iOS Simulator,name=$device" \
+            -destination "platform=iOS Simulator,id=$device_id" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             test
