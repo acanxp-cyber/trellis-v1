@@ -3,6 +3,9 @@ import SwiftUI
 struct TodayView: View {
     @Environment(AppModel.self) private var model
     @State private var isAddingTask = false
+    @State private var showsClearConfirmation = false
+    @State private var clearReceipt: ClearPlanReceipt?
+    @State private var scheduler = LocalReminderScheduler()
 
     var body: some View {
         NavigationStack {
@@ -51,6 +54,15 @@ struct TodayView: View {
             .background(Color.trellisInk.ignoresSafeArea())
             .navigationTitle("今天")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(role: .destructive) {
+                        showsClearConfirmation = true
+                    } label: {
+                        Label("清零今天", systemImage: "trash")
+                    }
+                    .accessibilityIdentifier("clear-today")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isAddingTask = true
@@ -65,6 +77,79 @@ struct TodayView: View {
                 }
                 .presentationDetents([.medium])
             }
+            .confirmationDialog(
+                "清零今天的计划？",
+                isPresented: $showsClearConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("清零未完成计划", role: .destructive) {
+                    Task {
+                        await clearToday()
+                    }
+                }
+            } message: {
+                Text("只清除今天尚未完成的计划并取消闹钟。已完成任务、记录和回顾都会保留。")
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let clearReceipt {
+                    HStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("今天的计划已清零")
+                                .font(.callout.weight(.semibold))
+                            Text("历史记录和已完成任务仍然保留")
+                                .font(.caption)
+                                .foregroundStyle(Color.trellisAsh)
+                        }
+
+                        Spacer()
+
+                        Button("撤销") {
+                            Task {
+                                await undoClear(clearReceipt)
+                            }
+                        }
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(Color.trellisBrass)
+                    }
+                    .foregroundStyle(Color.trellisBone)
+                    .padding(14)
+                    .background(.ultraThinMaterial)
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(Color.trellisBrass.opacity(0.35))
+                            .frame(height: 1)
+                    }
+                }
+            }
+        }
+    }
+
+    private func clearToday() async {
+        guard let receipt = await model.clearUnfinishedTasksToday() else {
+            return
+        }
+        scheduler.cancel(taskIDs: receipt.tasks.map(\.id))
+        withAnimation {
+            clearReceipt = receipt
+        }
+
+        let receiptID = receipt.id
+        try? await Task.sleep(for: .seconds(10))
+        guard clearReceipt?.id == receiptID else {
+            return
+        }
+        withAnimation {
+            clearReceipt = nil
+        }
+    }
+
+    private func undoClear(_ receipt: ClearPlanReceipt) async {
+        guard await model.restoreClearedPlan(receipt) else {
+            return
+        }
+        _ = await scheduler.schedule(receipt.tasks)
+        withAnimation {
+            clearReceipt = nil
         }
     }
 

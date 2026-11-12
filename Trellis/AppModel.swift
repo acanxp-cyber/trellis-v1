@@ -72,6 +72,47 @@ final class AppModel {
         await commit(next)
     }
 
+    func clearUnfinishedTasksToday(
+        now: Date = .now,
+        calendar: Calendar = .trellis
+    ) async -> ClearPlanReceipt? {
+        let removedTasks = data.tasks.filter { task in
+            guard !task.isCompleted else {
+                return false
+            }
+            if let scheduledAt = task.scheduledAt {
+                return calendar.isDate(scheduledAt, inSameDayAs: now)
+            }
+            return calendar.isDate(task.createdAt, inSameDayAs: now)
+        }
+        guard !removedTasks.isEmpty else {
+            return nil
+        }
+
+        let removedIDs = Set(removedTasks.map(\.id))
+        var next = data
+        next.tasks.removeAll { removedIDs.contains($0.id) }
+        guard await commit(next) else {
+            return nil
+        }
+        return ClearPlanReceipt(tasks: removedTasks)
+    }
+
+    @discardableResult
+    func restoreClearedPlan(_ receipt: ClearPlanReceipt) async -> Bool {
+        let existingIDs = Set(data.tasks.map(\.id))
+        let restoredTasks = receipt.tasks.filter {
+            !existingIDs.contains($0.id)
+        }
+        guard !restoredTasks.isEmpty else {
+            return true
+        }
+
+        var next = data
+        next.tasks.append(contentsOf: restoredTasks)
+        return await commit(next)
+    }
+
     @discardableResult
     func addScheduledTasks(_ drafts: [VoiceTaskDraft]) async -> Bool {
         let tasks = drafts.compactMap { draft -> GrowthTask? in
@@ -100,13 +141,32 @@ final class AppModel {
 
     @discardableResult
     func addRecord(text: String) async -> Bool {
+        await addRecord(
+            text: text,
+            recordID: UUID(),
+            attachments: []
+        )
+    }
+
+    @discardableResult
+    func addRecord(
+        text: String,
+        recordID: UUID,
+        attachments: [RecordAttachment]
+    ) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return false
         }
 
         var next = data
-        next.records.append(QuickRecord(text: trimmed))
+        next.records.append(
+            QuickRecord(
+                id: recordID,
+                text: trimmed,
+                attachments: attachments
+            )
+        )
         return await commit(next)
     }
 

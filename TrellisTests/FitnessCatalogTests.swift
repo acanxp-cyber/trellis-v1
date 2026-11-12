@@ -2,8 +2,8 @@ import XCTest
 @testable import Trellis
 
 final class FitnessCatalogTests: XCTestCase {
-    func testCatalogContainsFiftyDistinctBodyweightExercises() {
-        XCTAssertEqual(FitnessCatalog.exercises.count, 50)
+    func testCatalogContainsEightyDistinctActivities() {
+        XCTAssertEqual(FitnessCatalog.exercises.count, 80)
         XCTAssertEqual(
             Set(FitnessCatalog.exercises.map(\.id)).count,
             FitnessCatalog.exercises.count
@@ -85,5 +85,49 @@ final class FitnessCatalogTests: XCTestCase {
         XCTAssertEqual(recommendation?.blocks[1].items.first?.exercise.title, "徒手深蹲")
         XCTAssertFalse(recommendation?.blocks[0].items.isEmpty ?? true)
         XCTAssertFalse(recommendation?.blocks[2].items.isEmpty ?? true)
+    }
+
+    func testWorkoutRequestPreservesFiveMinuteStretchDuration() {
+        let request = WorkoutIntentParser.parse(
+            "上午十点开始，做5分钟的拉伸"
+        )
+
+        XCTAssertEqual(request?.focus, .mobility)
+        XCTAssertEqual(request?.durationMinutes, 5)
+        XCTAssertEqual(request?.hour, 10)
+        XCTAssertEqual(request?.minute, 0)
+    }
+
+    func testWorkoutRequestPreservesPushupSetsAndReps() {
+        let request = WorkoutIntentParser.parse(
+            "上午十点开始，做80个俯卧撑一组，共2组"
+        )
+
+        XCTAssertEqual(request?.matchedExerciseTitle, "标准俯卧撑")
+        XCTAssertEqual(request?.sets, 2)
+        XCTAssertEqual(request?.reps, 80)
+        XCTAssertNil(request?.durationMinutes)
+    }
+
+    func testWorkoutRequestRecognizesEquipmentCardioAndSport() {
+        XCTAssertEqual(
+            WorkoutIntentParser.parse("用哑铃练上肢")?.activityKind,
+            .equipment
+        )
+        XCTAssertEqual(
+            WorkoutIntentParser.parse("出去慢跑30分钟")?.activityKind,
+            .cardio
+        )
+        XCTAssertEqual(
+            WorkoutIntentParser.parse("打一小时羽毛球")?.activityKind,
+            .sport
+        )
+    }
+
+    func testExpandedCatalogIncludesEquipmentCardioAndSport() {
+        XCTAssertGreaterThanOrEqual(FitnessCatalog.exercises.count, 80)
+        XCTAssertFalse(FitnessCatalog.exercises(for: .equipment).isEmpty)
+        XCTAssertFalse(FitnessCatalog.exercises(for: .cardio).isEmpty)
+        XCTAssertFalse(FitnessCatalog.exercises(for: .sport).isEmpty)
     }
 }

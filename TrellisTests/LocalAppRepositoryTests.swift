@@ -49,5 +49,63 @@ final class LocalAppRepositoryTests: XCTestCase {
 
         XCTAssertThrowsError(try LocalAppRepository(fileURL: fileURL))
     }
+
+    func testSchemaOneRecordDecodesWithEmptyAttachments() throws {
+        let recordID = UUID()
+        let json = """
+        {
+          "schemaVersion": 1,
+          "tasks": [],
+          "records": [
+            {
+              "id": "\(recordID.uuidString)",
+              "text": "旧版本记录",
+              "createdAt": "2026-11-13T02:00:00Z"
+            }
+          ],
+          "reviews": []
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let decoded = try decoder.decode(AppData.self, from: Data(json.utf8))
+
+        XCTAssertEqual(decoded.records.first?.text, "旧版本记录")
+        XCTAssertEqual(decoded.records.first?.attachments, [])
+    }
+
+    func testRecordMediaStoreKeepsFilesLocalAndDeletesThem() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let store = try RecordMediaStore(baseDirectory: directory)
+        let recordID = UUID()
+
+        let attachment = try await store.save(
+            Data("local-media".utf8),
+            recordID: recordID,
+            kind: .photo,
+            fileExtension: "jpg"
+        )
+
+        XCTAssertEqual(attachment.recordID, recordID)
+        XCTAssertEqual(attachment.kind, .photo)
+        XCTAssertFalse(attachment.relativePath.hasPrefix("/"))
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: try store.url(for: attachment).path
+            )
+        )
+
+        try await store.delete(attachment)
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: try store.url(for: attachment).path
+            )
+        )
+    }
 }
 

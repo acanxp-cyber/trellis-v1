@@ -141,11 +141,34 @@ final class AppModelTests: XCTestCase {
             Set([todayDoneID, tomorrowID])
         )
 
-        XCTAssertTrue(await model.restoreClearedPlan(receipt))
+        let restored = await model.restoreClearedPlan(receipt)
+        XCTAssertTrue(restored)
         XCTAssertEqual(
             Set(model.data.tasks.map(\.id)),
             Set([todayOpenID, todayDoneID, tomorrowID])
         )
+    }
+
+    func testRecordPersistsLocalAttachmentMetadata() async throws {
+        let repository = InMemoryRepository()
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+        let recordID = UUID()
+        let attachment = RecordAttachment(
+            recordID: recordID,
+            kind: .photo,
+            relativePath: "\(recordID.uuidString)/photo.jpg"
+        )
+
+        let didSave = await model.addRecord(
+            text: "带照片的记录",
+            recordID: recordID,
+            attachments: [attachment]
+        )
+
+        XCTAssertTrue(didSave)
+        XCTAssertEqual(model.data.records.first?.id, recordID)
+        XCTAssertEqual(model.data.records.first?.attachments, [attachment])
     }
 }
 

@@ -23,17 +23,16 @@ final class ScreenshotUITests: XCTestCase {
         capture("02-voice-capture")
         app.buttons["取消"].tap()
 
+        app.buttons["tab-records"].tap()
+        capture("03-records")
+
         app.buttons["tab-fitness"].tap()
         XCTAssertTrue(app.staticTexts["今天练什么？"].waitForExistence(timeout: 5))
-        capture("03-fitness")
+        capture("04-fitness")
 
         app.buttons["tab-more"].tap()
         XCTAssertTrue(app.staticTexts["时间线"].waitForExistence(timeout: 5))
-        capture("04-more")
-
-        app.buttons["记录"].tap()
-        capture("05-records")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        capture("05-more")
 
         app.buttons["周回顾"].tap()
         capture("06-review")

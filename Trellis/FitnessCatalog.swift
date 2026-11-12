@@ -6,6 +6,9 @@ enum FitnessFocus: String, CaseIterable, Identifiable, Sendable {
     case core
     case fullBody
     case mobility
+    case cardio
+    case equipment
+    case sport
 
     var id: String { rawValue }
 
@@ -21,6 +24,12 @@ enum FitnessFocus: String, CaseIterable, Identifiable, Sendable {
             return "全身"
         case .mobility:
             return "拉伸放松"
+        case .cardio:
+            return "跑步有氧"
+        case .equipment:
+            return "器械训练"
+        case .sport:
+            return "运动项目"
         }
     }
 
@@ -36,6 +45,12 @@ enum FitnessFocus: String, CaseIterable, Identifiable, Sendable {
             return "协调、心肺与全身力量"
         case .mobility:
             return "热身、活动度与恢复"
+        case .cardio:
+            return "走路、跑步、跳绳与心肺"
+        case .equipment:
+            return "哑铃、杠铃、弹力带与器械"
+        case .sport:
+            return "球类、游泳与户外运动"
         }
     }
 
@@ -51,6 +66,12 @@ enum FitnessFocus: String, CaseIterable, Identifiable, Sendable {
             return "figure.highintensity.intervaltraining"
         case .mobility:
             return "figure.flexibility"
+        case .cardio:
+            return "figure.run"
+        case .equipment:
+            return "dumbbell.fill"
+        case .sport:
+            return "sportscourt.fill"
         }
     }
 }
@@ -76,6 +97,7 @@ struct FitnessExercise: Identifiable, Hashable, Sendable {
 struct FitnessRoutineItem: Identifiable, Hashable, Sendable {
     let exercise: FitnessExercise
     let cue: String
+    var prescriptionOverride: String?
 
     var id: String { exercise.id }
 }
@@ -91,7 +113,8 @@ struct FitnessRoutineBlock: Identifiable, Hashable, Sendable {
 struct FitnessRoutineRecommendation: Identifiable, Hashable, Sendable {
     let focus: FitnessFocus
     let title: String
-    let durationMinutes: Int
+    let durationMinutes: Int?
+    let doseSummary: String?
     let summary: String
     let blocks: [FitnessRoutineBlock]
     let safetyNote: String
@@ -99,15 +122,35 @@ struct FitnessRoutineRecommendation: Identifiable, Hashable, Sendable {
 
     var id: String { focus.rawValue }
 
+    var quantityLabel: String {
+        if let durationMinutes {
+            return "\(durationMinutes) 分钟"
+        }
+        if let doseSummary {
+            return doseSummary
+        }
+        return "按组完成"
+    }
+
     func taskDraft(
         scheduledAt: Date,
         reminderLeadMinutes: Int = 5
     ) -> VoiceTaskDraft {
         VoiceTaskDraft(
-            title: "\(title) · \(durationMinutes) 分钟",
+            title: "\(title)\(durationOrDoseLabel)",
             scheduledAt: scheduledAt,
             reminderLeadMinutes: reminderLeadMinutes
         )
+    }
+
+    private var durationOrDoseLabel: String {
+        if let durationMinutes {
+            return " · \(durationMinutes) 分钟"
+        }
+        if let doseSummary {
+            return " · \(doseSummary)"
+        }
+        return ""
     }
 }
 
@@ -163,6 +206,36 @@ enum FitnessCatalog {
         FitnessExercise(title: "髋屈肌拉伸", focus: .mobility, level: .beginner, targets: "髋前侧", prescription: "每侧 20–30 秒", method: "半跪姿收紧臀部，骨盆轻轻向前移动。", adjustment: "在膝下垫软垫。"),
         FitnessExercise(title: "小腿靠墙拉伸", focus: .mobility, level: .beginner, targets: "小腿", prescription: "每侧 20–30 秒", method: "双手扶墙，一腿后撤并踩实脚跟，身体前移。", adjustment: "缩小前移幅度。"),
         FitnessExercise(title: "婴儿式", focus: .mobility, level: .beginner, targets: "背、髋、肩", prescription: "30–45 秒", method: "跪坐后身体前屈，双臂向前延伸，自然呼吸。", adjustment: "膝下或额头垫软垫。"),
+        FitnessExercise(title: "快走", focus: .cardio, level: .beginner, targets: "心肺、下肢", prescription: "10–30 分钟", method: "保持能说短句的速度，脚步轻，肩膀放松。", adjustment: "从 5–10 分钟开始。"),
+        FitnessExercise(title: "慢跑", focus: .cardio, level: .beginner, targets: "心肺、下肢", prescription: "10–30 分钟", method: "用能正常对话的速度持续跑，落地保持轻。", adjustment: "跑走交替。"),
+        FitnessExercise(title: "间歇跑", focus: .cardio, level: .intermediate, targets: "心肺、速度", prescription: "6 组 × 快跑 30 秒 + 慢走 60 秒", method: "快跑保持可控，恢复段完全放松。", adjustment: "改为快走 30 秒 + 慢走 90 秒。"),
+        FitnessExercise(title: "跳绳", focus: .cardio, level: .intermediate, targets: "心肺、小腿、协调", prescription: "5 组 × 30–60 秒", method: "小幅度弹跳，手腕摇绳，落地轻。", adjustment: "无绳原地摆臂跳。"),
+        FitnessExercise(title: "楼梯训练", focus: .cardio, level: .intermediate, targets: "腿、臀、心肺", prescription: "6–10 趟", method: "上楼稳定发力，下楼放慢并扶稳。", adjustment: "只上楼，乘电梯下楼。"),
+        FitnessExercise(title: "椭圆机", focus: .cardio, level: .beginner, targets: "心肺、下肢", prescription: "10–20 分钟", method: "脚掌贴稳踏板，阻力以能保持节奏为准。", adjustment: "降低阻力。"),
+        FitnessExercise(title: "动感单车", focus: .cardio, level: .beginner, targets: "心肺、腿", prescription: "10–20 分钟", method: "调好座高，保持稳定踩踏，不耸肩。", adjustment: "降低阻力和时间。"),
+        FitnessExercise(title: "原地踏步", focus: .cardio, level: .beginner, targets: "心肺、下肢", prescription: "5–15 分钟", method: "交替抬脚并自然摆臂，保持呼吸顺畅。", adjustment: "减小抬脚高度。"),
+        FitnessExercise(title: "低冲击有氧", focus: .cardio, level: .beginner, targets: "心肺、全身", prescription: "8–15 分钟", method: "踏步、侧点和轻摆臂组合，不跳跃。", adjustment: "只做原地踏步。"),
+        FitnessExercise(title: "爬坡走", focus: .cardio, level: .intermediate, targets: "臀、腿、心肺", prescription: "8–20 分钟", method: "使用跑步机坡度或缓坡，保持上身直立。", adjustment: "降低坡度与速度。"),
+        FitnessExercise(title: "哑铃深蹲", focus: .equipment, level: .beginner, targets: "腿、臀", prescription: "3 组 × 8–12 次", method: "双手持哑铃靠近身体，按深蹲动作完成。", adjustment: "徒手深蹲。"),
+        FitnessExercise(title: "哑铃卧推", focus: .equipment, level: .beginner, targets: "胸、肱三头肌", prescription: "3 组 × 8–12 次", method: "仰卧稳定肩胛，哑铃下降后向上推。", adjustment: "使用更轻重量或上斜俯卧撑。"),
+        FitnessExercise(title: "单臂哑铃划船", focus: .equipment, level: .beginner, targets: "背、肱二头肌", prescription: "3 组 × 每侧 8–12 次", method: "支撑稳定，肘部沿身体向后拉。", adjustment: "弹力带划船。"),
+        FitnessExercise(title: "哑铃肩推", focus: .equipment, level: .intermediate, targets: "肩、肱三头肌", prescription: "3 组 × 6–10 次", method: "肋骨保持下沉，向上推举不过度反弓。", adjustment: "坐姿并减轻重量。"),
+        FitnessExercise(title: "杠铃深蹲", focus: .equipment, level: .intermediate, targets: "腿、臀、核心", prescription: "3–5 组 × 5–8 次", method: "使用安全架和熟悉重量，膝盖对齐脚尖。", adjustment: "高脚杯深蹲。"),
+        FitnessExercise(title: "罗马尼亚硬拉", focus: .equipment, level: .intermediate, targets: "腿后侧、臀、背", prescription: "3 组 × 6–10 次", method: "髋部后移，负重贴近腿，背部保持中立。", adjustment: "徒手髋铰链。"),
+        FitnessExercise(title: "弹力带划船", focus: .equipment, level: .beginner, targets: "背、肱二头肌", prescription: "3 组 × 10–15 次", method: "固定弹力带，肩胛后收后拉向腹部。", adjustment: "缩短拉伸距离。"),
+        FitnessExercise(title: "弹力带侧步", focus: .equipment, level: .beginner, targets: "臀中肌", prescription: "2–3 组 × 每侧 10 步", method: "弹力带套在膝上或踝部，小步侧移。", adjustment: "减小步幅。"),
+        FitnessExercise(title: "壶铃摆动", focus: .equipment, level: .intermediate, targets: "臀、腿后侧、核心", prescription: "3 组 × 10–15 次", method: "以髋铰链驱动摆动，不用手臂硬抬。", adjustment: "徒手髋铰链。"),
+        FitnessExercise(title: "坐姿胸推机", focus: .equipment, level: .beginner, targets: "胸、肱三头肌", prescription: "3 组 × 8–12 次", method: "调整座椅使把手与胸口同高，平稳推离。", adjustment: "降低重量。"),
+        FitnessExercise(title: "腿举机", focus: .equipment, level: .beginner, targets: "腿、臀", prescription: "3 组 × 8–12 次", method: "腰背贴稳靠垫，膝盖朝脚尖方向屈伸。", adjustment: "缩小活动范围。"),
+        FitnessExercise(title: "高位下拉", focus: .equipment, level: .beginner, targets: "背、肱二头肌", prescription: "3 组 × 8–12 次", method: "肩胛先下沉，再将把手拉向锁骨附近。", adjustment: "减轻重量。"),
+        FitnessExercise(title: "篮球投篮", focus: .sport, level: .beginner, targets: "协调、肩、腿", prescription: "10–20 分钟", method: "从近距离定点投篮开始，动作连贯，落地稳定。", adjustment: "缩短距离。"),
+        FitnessExercise(title: "足球带球", focus: .sport, level: .intermediate, targets: "心肺、协调、腿", prescription: "8–15 分钟", method: "小步触球，保持抬头和可控速度。", adjustment: "慢速绕桩。"),
+        FitnessExercise(title: "羽毛球步法", focus: .sport, level: .intermediate, targets: "腿、心肺、协调", prescription: "6 组 × 30 秒", method: "前后左右小步移动，每次回到中心。", adjustment: "降低移动速度。"),
+        FitnessExercise(title: "乒乓球对练", focus: .sport, level: .beginner, targets: "协调、心肺", prescription: "10–20 分钟", method: "先以稳定对拉和轻移动为主。", adjustment: "缩短回合时间。"),
+        FitnessExercise(title: "网球挥拍", focus: .sport, level: .intermediate, targets: "肩、核心、腿", prescription: "10–20 分钟", method: "先做徒手挥拍与脚步，再进入轻对练。", adjustment: "只做空挥和步法。"),
+        FitnessExercise(title: "自由泳", focus: .sport, level: .intermediate, targets: "全身、心肺", prescription: "10–20 分钟", method: "分组游，保持呼吸节奏，量力而行。", adjustment: "使用浮具或缩短距离。"),
+        FitnessExercise(title: "户外骑行", focus: .sport, level: .beginner, targets: "腿、心肺", prescription: "20–40 分钟", method: "选择安全路线，保持可控速度和刹车距离。", adjustment: "室内动感单车。"),
+        FitnessExercise(title: "徒步爬坡", focus: .sport, level: .beginner, targets: "腿、臀、心肺", prescription: "20–60 分钟", method: "选择熟悉路线，坡段放慢并保持补水。", adjustment: "平地快走。"),
     ]
 
     static func exercises(for focus: FitnessFocus) -> [FitnessExercise] {
@@ -179,6 +252,12 @@ enum FitnessIntentParser {
         from transcript: String,
         now: Date = .now
     ) -> FitnessRoutineRecommendation? {
+        if let request = WorkoutIntentParser.parse(
+            transcript,
+            now: now
+        ) {
+            return recommendation(for: request, now: now)
+        }
         if let match = FitnessExerciseMatcher.match(in: transcript) {
             return recommendation(
                 for: match.exercise,
@@ -239,6 +318,7 @@ enum FitnessIntentParser {
             focus: focus,
             title: "\(focus.title)徒手训练",
             durationMinutes: 20,
+            doseSummary: nil,
             summary: focus.subtitle,
             blocks: [warmup, strength, cooldown],
             safetyNote: "这是一份一般健身建议，不替代医疗诊断或康复处方。若开始训练前已有伤病、疼痛或身体不适，请先咨询医生或合格教练。",
@@ -271,6 +351,7 @@ enum FitnessIntentParser {
             focus: matchedExercise.focus,
             title: "\(matchedExercise.title)相关训练",
             durationMinutes: 20,
+            doseSummary: nil,
             summary: "识别为\(matchedExercise.title) · \(matchedExercise.targets)",
             blocks: [
                 base.blocks[0],
@@ -279,6 +360,105 @@ enum FitnessIntentParser {
             ],
             safetyNote: base.safetyNote,
             matchedExerciseTitle: matchedExercise.title
+        )
+    }
+
+    static func recommendation(
+        for request: WorkoutRequest,
+        now: Date = .now
+    ) -> FitnessRoutineRecommendation {
+        let matchedExercise = request.matchedExerciseTitle.flatMap { title in
+            FitnessCatalog.exercises.first { $0.title == title }
+        }
+        let base: FitnessRoutineRecommendation
+        if let matchedExercise {
+            base = recommendation(for: matchedExercise, now: now)
+        } else {
+            base = recommendation(for: request.focus, now: now)
+        }
+
+        let doseSummary: String?
+        if let sets = request.sets, let reps = request.reps {
+            doseSummary = "\(sets) 组 × \(reps) 次"
+        } else {
+            doseSummary = nil
+        }
+
+        let requestedDuration = request.durationMinutes
+        let mainLimit: Int
+        if doseSummary != nil {
+            mainLimit = matchedExercise == nil ? 2 : 1
+        } else if let requestedDuration, requestedDuration <= 5 {
+            mainLimit = 2
+        } else {
+            mainLimit = 3
+        }
+
+        var mainItems = Array(base.blocks[1].items.prefix(mainLimit))
+        if let doseSummary, !mainItems.isEmpty {
+            mainItems[0].prescriptionOverride = doseSummary
+        }
+
+        let warmupMinutes: Int?
+        let mainMinutes: Int?
+        let cooldownMinutes: Int?
+        if let requestedDuration {
+            warmupMinutes = max(1, Int((Double(requestedDuration) * 0.2).rounded()))
+            cooldownMinutes = max(1, Int((Double(requestedDuration) * 0.2).rounded()))
+            mainMinutes = max(
+                1,
+                requestedDuration - warmupMinutes! - cooldownMinutes!
+            )
+        } else {
+            warmupMinutes = nil
+            mainMinutes = nil
+            cooldownMinutes = nil
+        }
+
+        let warmupItemCount = requestedDuration == nil
+            ? base.blocks[0].items.count
+            : 1
+        let cooldownItemCount = requestedDuration == nil
+            ? base.blocks[2].items.count
+            : 1
+        let warmupBlock = FitnessRoutineBlock(
+            title: warmupMinutes.map { "热身 · \($0) 分钟" } ?? "热身",
+            detail: base.blocks[0].detail,
+            items: Array(base.blocks[0].items.prefix(warmupItemCount))
+        )
+        let mainBlock = FitnessRoutineBlock(
+            title: mainMinutes.map { "主训练 · \($0) 分钟" }
+                ?? (doseSummary.map { "主训练 · \($0)" } ?? "主训练"),
+            detail: request.matchedExerciseTitle.map {
+                "主动作：\($0)，严格保留你指定的组数和次数。"
+            } ?? base.blocks[1].detail,
+            items: mainItems
+        )
+        let cooldownBlock = FitnessRoutineBlock(
+            title: cooldownMinutes.map { "收尾 · \($0) 分钟" } ?? "收尾",
+            detail: base.blocks[2].detail,
+            items: Array(base.blocks[2].items.prefix(cooldownItemCount))
+        )
+        let activityTitle = request.equipment.map {
+            "\($0)\(request.focus.title)训练"
+        } ?? request.focus.title
+
+        return FitnessRoutineRecommendation(
+            focus: request.focus,
+            title: request.matchedExerciseTitle.map {
+                "\($0)相关训练"
+            } ?? "\(activityTitle)安排",
+            durationMinutes: doseSummary == nil
+                ? (requestedDuration ?? base.durationMinutes)
+                : nil,
+            doseSummary: doseSummary,
+            summary: [
+                request.activityKind.rawValue,
+                request.focus.subtitle,
+            ].joined(separator: " · "),
+            blocks: [warmupBlock, mainBlock, cooldownBlock],
+            safetyNote: base.safetyNote,
+            matchedExerciseTitle: request.matchedExerciseTitle
         )
     }
 
@@ -315,7 +495,7 @@ enum FitnessIntentParser {
             || focus(in: text) != nil
     }
 
-    private static func focus(in text: String) -> FitnessFocus? {
+    static func focus(in text: String) -> FitnessFocus? {
         let value = text.lowercased()
 
         if containsAny(value, ["拉伸", "放松", "活动度", "热身", "恢复"]) {
@@ -323,6 +503,24 @@ enum FitnessIntentParser {
         }
         if containsAny(value, ["核心", "腹部", "腹肌", "腰腹"]) {
             return .core
+        }
+        if containsAny(
+            value,
+            ["哑铃", "杠铃", "弹力带", "壶铃", "器械", "胸推机", "腿举机", "高位下拉"]
+        ) {
+            return .equipment
+        }
+        if containsAny(
+            value,
+            ["篮球", "足球", "羽毛球", "乒乓球", "网球", "游泳", "骑行", "徒步"]
+        ) {
+            return .sport
+        }
+        if containsAny(
+            value,
+            ["跑", "快走", "慢跑", "跳绳", "有氧", "楼梯", "椭圆机", "动感单车"]
+        ) {
+            return .cardio
         }
         if containsAny(value, ["下肢", "下半身", "腿", "臀", "深蹲", "箭步"]) {
             return .lower

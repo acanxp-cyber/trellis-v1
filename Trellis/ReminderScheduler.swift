@@ -108,6 +108,24 @@ final class LocalReminderScheduler {
         )
     }
 
+    func cancel(taskIDs: [UUID]) {
+        let identifiers = taskIDs.map {
+            "task-reminder-\($0.uuidString)"
+        }
+        center.removePendingNotificationRequests(
+            withIdentifiers: identifiers
+        )
+        center.removeDeliveredNotifications(
+            withIdentifiers: identifiers
+        )
+
+        if #available(iOS 26.0, *) {
+            for taskID in taskIDs {
+                try? AlarmManager.shared.cancel(id: taskID)
+            }
+        }
+    }
+
     private func requestAuthorization() async -> ReminderChannel {
         if #available(iOS 26.0, *) {
             do {

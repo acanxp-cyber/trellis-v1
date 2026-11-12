@@ -32,15 +32,84 @@ struct GrowthTask: Identifiable, Codable, Sendable, Equatable {
     }
 }
 
+enum RecordAttachmentKind: String, Codable, Sendable {
+    case photo
+    case video
+    case audio
+    case drawing
+    case pixelArt
+    case stickerArtwork
+}
+
+struct RecordAttachment: Identifiable, Codable, Sendable, Equatable {
+    let id: UUID
+    let recordID: UUID
+    let kind: RecordAttachmentKind
+    let relativePath: String
+    var durationSeconds: Double?
+    let createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        recordID: UUID,
+        kind: RecordAttachmentKind,
+        relativePath: String,
+        durationSeconds: Double? = nil,
+        createdAt: Date = .now
+    ) {
+        self.id = id
+        self.recordID = recordID
+        self.kind = kind
+        self.relativePath = relativePath
+        self.durationSeconds = durationSeconds
+        self.createdAt = createdAt
+    }
+}
+
 struct QuickRecord: Identifiable, Codable, Sendable, Equatable {
     let id: UUID
     var text: String
     var createdAt: Date
+    var attachments: [RecordAttachment]
 
-    init(id: UUID = UUID(), text: String, createdAt: Date = .now) {
+    init(
+        id: UUID = UUID(),
+        text: String,
+        createdAt: Date = .now,
+        attachments: [RecordAttachment] = []
+    ) {
         self.id = id
         self.text = text
         self.createdAt = createdAt
+        self.attachments = attachments
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case text
+        case createdAt
+        case attachments
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        text = try container.decode(String.self, forKey: .text)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        attachments = try container.decodeIfPresent(
+            [RecordAttachment].self,
+            forKey: .attachments
+        ) ?? []
+    }
+}
+
+struct ClearPlanReceipt: Identifiable, Sendable, Equatable {
+    let id: UUID
+    let tasks: [GrowthTask]
+
+    init(id: UUID = UUID(), tasks: [GrowthTask]) {
+        self.id = id
+        self.tasks = tasks
     }
 }
 
@@ -83,7 +152,7 @@ struct WeeklyReview: Identifiable, Codable, Sendable, Equatable {
 }
 
 struct AppData: Codable, Sendable, Equatable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int
     var tasks: [GrowthTask]

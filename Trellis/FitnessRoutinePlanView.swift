@@ -12,7 +12,7 @@ struct FitnessRoutinePlanView: View {
                         .font(.system(.title3, design: .serif))
                         .foregroundStyle(Color.trellisBone)
 
-                    Text("\(recommendation.summary) · \(recommendation.durationMinutes) 分钟")
+                    Text("\(recommendation.summary) · \(recommendation.quantityLabel)")
                         .font(.caption)
                         .foregroundStyle(Color.trellisAsh)
                 }
@@ -63,7 +63,10 @@ struct FitnessRoutinePlanView: View {
 
                                     Spacer()
 
-                                    Text(item.exercise.prescription)
+                                    Text(
+                                        item.prescriptionOverride
+                                            ?? item.exercise.prescription
+                                    )
                                         .font(.caption.monospacedDigit())
                                         .foregroundStyle(Color.trellisBrass)
                                 }

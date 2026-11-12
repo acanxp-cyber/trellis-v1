@@ -12,12 +12,6 @@ struct MoreView: View {
             List {
                 Section("时间线") {
                     NavigationLink {
-                        RecordsView()
-                    } label: {
-                        Label("记录", systemImage: "text.quote")
-                    }
-
-                    NavigationLink {
                         ReviewView()
                     } label: {
                         Label("周回顾", systemImage: "checklist")

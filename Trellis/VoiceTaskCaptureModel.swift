@@ -261,7 +261,7 @@ final class VoiceTaskCaptureModel {
                 FitnessIntentParser.containsFitnessIntent($0.title)
             }) {
                 parsed[fitnessIndex].title =
-                    "\(recommendation.title) · \(recommendation.durationMinutes) 分钟"
+                    "\(recommendation.title) · \(recommendation.quantityLabel)"
                 parsed[fitnessIndex].reminderLeadMinutes = max(
                     parsed[fitnessIndex].reminderLeadMinutes,
                     5
