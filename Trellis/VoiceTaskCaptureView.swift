@@ -278,7 +278,7 @@ struct VoiceTaskCaptureView: View {
                     Text(
                         isSaving
                             ? "正在保存"
-                            : "保存 \(capture.drafts.count) 个任务并提醒"
+                            : saveButtonTitle
                     )
                     .fontWeight(.semibold)
                 }
@@ -291,6 +291,13 @@ struct VoiceTaskCaptureView: View {
             .padding(16)
             .background(.ultraThinMaterial)
         }
+    }
+
+    private var saveButtonTitle: String {
+        if capture.fitnessRecommendation != nil {
+            return "确认训练安排并提醒"
+        }
+        return "保存 \(capture.drafts.count) 个任务并提醒"
     }
 
     private func saveTasks() {

@@ -54,4 +54,36 @@ final class FitnessCatalogTests: XCTestCase {
             FitnessIntentParser.recommendation(from: "下午两点开会")
         )
     }
+
+    func testFuzzyExerciseMatchExpandsPushupIntoRelevantRoutine() {
+        for phrase in ["做俯卧撑", "我想做俯撑", "今天来一组俯卧称"] {
+            let match = FitnessExerciseMatcher.match(in: phrase)
+            XCTAssertEqual(match?.exercise.title, "标准俯卧撑")
+
+            let recommendation = FitnessIntentParser.recommendation(
+                from: phrase
+            )
+            XCTAssertEqual(
+                recommendation?.matchedExerciseTitle,
+                "标准俯卧撑"
+            )
+            XCTAssertEqual(recommendation?.focus, .upper)
+            XCTAssertEqual(
+                recommendation?.blocks[1].items.first?.exercise.title,
+                "标准俯卧撑"
+            )
+        }
+    }
+
+    func testSpecificExerciseRoutineStillContainsWarmupAndCooldown() {
+        let recommendation = FitnessIntentParser.recommendation(
+            from: "练深蹲"
+        )
+
+        XCTAssertEqual(recommendation?.matchedExerciseTitle, "徒手深蹲")
+        XCTAssertEqual(recommendation?.blocks.count, 3)
+        XCTAssertEqual(recommendation?.blocks[1].items.first?.exercise.title, "徒手深蹲")
+        XCTAssertFalse(recommendation?.blocks[0].items.isEmpty ?? true)
+        XCTAssertFalse(recommendation?.blocks[2].items.isEmpty ?? true)
+    }
 }

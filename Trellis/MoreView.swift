@@ -10,6 +10,26 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("时间线") {
+                    NavigationLink {
+                        RecordsView()
+                    } label: {
+                        Label("记录", systemImage: "text.quote")
+                    }
+
+                    NavigationLink {
+                        ReviewView()
+                    } label: {
+                        Label("周回顾", systemImage: "checklist")
+                    }
+
+                    NavigationLink {
+                        YearView()
+                    } label: {
+                        Label("年轮", systemImage: "circle.dashed")
+                    }
+                }
+
                 Section("数据主权") {
                     LabeledContent("存储位置", value: "仅本机")
                     LabeledContent("健康数据", value: "不持久化、不同步")
@@ -37,7 +57,19 @@ struct MoreView: View {
                 Section("当前版本") {
                     LabeledContent("原生界面", value: "SwiftUI")
                     LabeledContent("本地数据", value: "版本化 JSON")
-                    LabeledContent("MVP", value: "任务、记录、周回顾")
+                    LabeledContent("MVP", value: "任务、语音、健身、回顾")
+                }
+
+                Section("第三方素材") {
+                    Link(
+                        "动作示意：Free Exercise DB（Public Domain）",
+                        destination: URL(
+                            string: "https://github.com/yuhonas/free-exercise-db"
+                        )!
+                    )
+                    Text("仅打包许可证允许商用的动作图片；Gym Visual 所有的动图未进入 App。")
+                        .font(.caption)
+                        .foregroundStyle(Color.trellisAsh)
                 }
             }
             .navigationTitle("更多")

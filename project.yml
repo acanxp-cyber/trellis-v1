@@ -23,7 +23,11 @@ targets:
       - path: Trellis
         excludes:
           - Info.plist
+          - Resources/ExerciseMedia
       - path: Sources/AudioTapBridge
+      - path: Trellis/Resources/ExerciseMedia
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.acanxp.trellis

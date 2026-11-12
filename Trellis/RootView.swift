@@ -2,10 +2,7 @@ import SwiftUI
 
 private enum AppSection: Hashable {
     case today
-    case records
     case fitness
-    case review
-    case year
     case more
 }
 
@@ -61,14 +58,8 @@ struct RootView: View {
         switch selection {
         case .today:
             TodayView()
-        case .records:
-            RecordsView()
         case .fitness:
             FitnessView()
-        case .review:
-            ReviewView()
-        case .year:
-            YearView()
         case .more:
             MoreView()
         }
@@ -107,13 +98,15 @@ private struct TrellisBottomDock: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
-            tab(.today, title: "今天", systemImage: "circle")
-            tab(.records, title: "记录", systemImage: "text.quote")
-            tab(
-                .fitness,
-                title: "健身",
-                systemImage: "figure.strengthtraining.traditional"
-            )
+            HStack(spacing: 0) {
+                tab(.today, title: "今天", systemImage: "circle")
+                tab(
+                    .fitness,
+                    title: "健身",
+                    systemImage: "figure.strengthtraining.traditional"
+                )
+            }
+            .frame(maxWidth: .infinity)
 
             Button(action: onVoice) {
                 ZStack {
@@ -138,9 +131,10 @@ private struct TrellisBottomDock: View {
             .accessibilityLabel("语音安排")
             .accessibilityIdentifier("voice-task-capture")
 
-            tab(.review, title: "回顾", systemImage: "checklist")
-            tab(.year, title: "年轮", systemImage: "circle.dashed")
-            tab(.more, title: "更多", systemImage: "ellipsis")
+            HStack(spacing: 0) {
+                tab(.more, title: "更多", systemImage: "ellipsis")
+            }
+            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 7)
         .padding(.top, 8)
@@ -186,14 +180,8 @@ private struct TrellisBottomDock: View {
         switch section {
         case .today:
             return "today"
-        case .records:
-            return "records"
         case .fitness:
             return "fitness"
-        case .review:
-            return "review"
-        case .year:
-            return "year"
         case .more:
             return "more"
         }

@@ -6,17 +6,15 @@ struct RecordsView: View {
     @State private var isSaving = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
-                    composer
-                    history
-                }
-                .padding(22)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 18) {
+                composer
+                history
             }
-            .background(Color.trellisInk.ignoresSafeArea())
-            .navigationTitle("记录")
+            .padding(22)
         }
+        .background(Color.trellisInk.ignoresSafeArea())
+        .navigationTitle("记录")
     }
 
     private var composer: some View {

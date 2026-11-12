@@ -95,6 +95,7 @@ struct FitnessRoutineRecommendation: Identifiable, Hashable, Sendable {
     let summary: String
     let blocks: [FitnessRoutineBlock]
     let safetyNote: String
+    let matchedExerciseTitle: String?
 
     var id: String { focus.rawValue }
 
@@ -178,6 +179,12 @@ enum FitnessIntentParser {
         from transcript: String,
         now: Date = .now
     ) -> FitnessRoutineRecommendation? {
+        if let match = FitnessExerciseMatcher.match(in: transcript) {
+            return recommendation(
+                for: match.exercise,
+                now: now
+            )
+        }
         guard let focus = focus(in: transcript) else {
             return nil
         }
@@ -234,7 +241,44 @@ enum FitnessIntentParser {
             durationMinutes: 20,
             summary: focus.subtitle,
             blocks: [warmup, strength, cooldown],
-            safetyNote: "这是一份一般健身建议，不替代医疗诊断或康复处方。若开始训练前已有伤病、疼痛或身体不适，请先咨询医生或合格教练。"
+            safetyNote: "这是一份一般健身建议，不替代医疗诊断或康复处方。若开始训练前已有伤病、疼痛或身体不适，请先咨询医生或合格教练。",
+            matchedExerciseTitle: nil
+        )
+    }
+
+    static func recommendation(
+        for matchedExercise: FitnessExercise,
+        now: Date = .now
+    ) -> FitnessRoutineRecommendation {
+        let base = recommendation(
+            for: matchedExercise.focus,
+            now: now
+        )
+        let matchedItem = FitnessRoutineItem(
+            exercise: matchedExercise,
+            cue: "作为本次主动作，先保证动作稳定"
+        )
+        let relatedItems = base.blocks[1].items.filter {
+            $0.exercise.id != matchedExercise.id
+        }
+        let mainBlock = FitnessRoutineBlock(
+            title: "主训练 · 12 分钟",
+            detail: "已围绕“\(matchedExercise.title)”安排相关动作；组间休息 30–45 秒。",
+            items: [matchedItem] + relatedItems
+        )
+
+        return FitnessRoutineRecommendation(
+            focus: matchedExercise.focus,
+            title: "\(matchedExercise.title)相关训练",
+            durationMinutes: 20,
+            summary: "识别为\(matchedExercise.title) · \(matchedExercise.targets)",
+            blocks: [
+                base.blocks[0],
+                mainBlock,
+                base.blocks[2],
+            ],
+            safetyNote: base.safetyNote,
+            matchedExerciseTitle: matchedExercise.title
         )
     }
 
@@ -267,7 +311,8 @@ enum FitnessIntentParser {
     }
 
     static func containsFitnessIntent(_ text: String) -> Bool {
-        focus(in: text) != nil
+        FitnessExerciseMatcher.match(in: text) != nil
+            || focus(in: text) != nil
     }
 
     private static func focus(in text: String) -> FitnessFocus? {
@@ -293,5 +338,157 @@ enum FitnessIntentParser {
 
     private static func containsAny(_ value: String, _ terms: [String]) -> Bool {
         terms.contains { value.contains($0) }
+    }
+}
+
+struct FitnessExerciseMatch: Equatable, Sendable {
+    let exercise: FitnessExercise
+    let matchedText: String
+    let score: Double
+}
+
+enum FitnessExerciseMatcher {
+    private static let aliases: [String: [String]] = [
+        "标准俯卧撑": [
+            "俯卧撑", "俯卧", "俯撑", "俯卧称", "伏地挺身",
+            "push up", "pushup",
+        ],
+        "跪姿俯卧撑": ["跪姿俯卧撑", "跪姿俯撑", "knee pushup"],
+        "上斜俯卧撑": ["上斜俯卧撑", "手撑高俯卧撑", "incline pushup"],
+        "钻石俯卧撑": ["钻石俯卧撑", "窄距俯卧撑", "三头俯卧撑"],
+        "折刀俯卧撑": ["折刀俯卧撑", "派克俯卧撑", "pike pushup"],
+        "徒手深蹲": ["徒手深蹲", "深蹲", "bodyweight squat"],
+        "相扑深蹲": ["相扑深蹲", "宽距深蹲", "sumo squat"],
+        "反向箭步蹲": ["反向箭步蹲", "后撤箭步蹲", "后撤弓步", "reverse lunge"],
+        "前向箭步蹲": ["前向箭步蹲", "前弓步", "forward lunge"],
+        "侧向箭步蹲": ["侧向箭步蹲", "侧弓步", "side lunge"],
+        "分腿蹲": ["分腿蹲", "split squat"],
+        "臀桥": ["臀桥", "桥式", "glute bridge"],
+        "单腿臀桥": ["单腿臀桥", "single leg glute bridge"],
+        "提踵": ["提踵", "踮脚", "calf raise"],
+        "靠墙静蹲": ["靠墙静蹲", "墙蹲", "wall sit"],
+        "死虫": ["死虫", "dead bug"],
+        "鸟狗": ["鸟狗", "bird dog"],
+        "前臂平板支撑": ["前臂平板支撑", "平板支撑", "平板", "plank"],
+        "侧平板支撑": ["侧平板支撑", "侧平板", "side plank"],
+        "中空支撑": ["中空支撑", "hollow hold"],
+        "卷腹": ["卷腹", "仰卧卷腹", "crunch"],
+        "反向卷腹": ["反向卷腹", "reverse crunch"],
+        "自行车卷腹": ["自行车卷腹", "空中自行车", "bicycle crunch"],
+        "登山跑": ["登山跑", "登山者", "mountain climber"],
+        "熊爬支撑": ["熊爬支撑", "bear crawl hold"],
+        "开合跳": ["开合跳", "jumping jack"],
+        "高抬腿": ["高抬腿", "high knees"],
+        "波比跳": ["波比跳", "波比", "burpee"],
+        "深蹲上举": ["深蹲上举", "squat reach"],
+        "尺蠖爬": ["尺蠖爬", "inchworm"],
+        "熊爬": ["熊爬", "bear crawl"],
+        "蟹式触脚": ["蟹式触脚", "crab toe touch"],
+        "后撤步触地": ["后撤步触地", "back step reach"],
+        "交叉登山跑": ["交叉登山跑", "cross mountain climber"],
+        "原地空击": ["原地空击", "空击", "shadow boxing"],
+        "猫牛式": ["猫牛式", "猫牛", "cat cow"],
+        "胸椎旋转": ["胸椎旋转", "thoracic rotation"],
+        "世界最伟大拉伸": ["世界最伟大拉伸", "greatest stretch"],
+        "站姿腿后侧伸展": ["腿后侧拉伸", "腘绳肌拉伸", "hamstring stretch"],
+        "站姿股四头肌拉伸": ["股四头肌拉伸", "大腿前侧拉伸", "quad stretch"],
+        "髋屈肌拉伸": ["髋屈肌拉伸", "hip flexor stretch"],
+        "小腿靠墙拉伸": ["小腿拉伸", "calf stretch"],
+        "婴儿式": ["婴儿式", "child pose"],
+    ]
+
+    static func match(in transcript: String) -> FitnessExerciseMatch? {
+        let normalized = normalize(transcript)
+        guard !normalized.isEmpty else {
+            return nil
+        }
+
+        let aliasCandidates = aliases.flatMap { title, values in
+            values.map { (title, $0) }
+        }
+        .sorted { normalize($0.1).count > normalize($1.1).count }
+
+        for (title, alias) in aliasCandidates {
+            let normalizedAlias = normalize(alias)
+            guard
+                normalizedAlias.count >= 2,
+                normalized.contains(normalizedAlias),
+                let exercise = FitnessCatalog.exercises.first(where: {
+                    $0.title == title
+                })
+            else {
+                continue
+            }
+            return FitnessExerciseMatch(
+                exercise: exercise,
+                matchedText: alias,
+                score: 1
+            )
+        }
+
+        var best: FitnessExerciseMatch?
+        for exercise in FitnessCatalog.exercises {
+            let title = normalize(exercise.title)
+            let distance = editDistance(normalized, title)
+            let denominator = max(normalized.count, title.count, 1)
+            let score = 1 - Double(distance) / Double(denominator)
+            let allowedDistance = title.count <= 3 ? 1 : 2
+            guard
+                normalized.contains(title)
+                    || distance <= allowedDistance
+            else {
+                continue
+            }
+            if score > (best?.score ?? 0) {
+                best = FitnessExerciseMatch(
+                    exercise: exercise,
+                    matchedText: exercise.title,
+                    score: score
+                )
+            }
+        }
+        return best
+    }
+
+    private static func normalize(_ value: String) -> String {
+        let fillers = [
+            "我想", "我要", "帮我", "给我", "今天", "现在",
+            "安排", "训练", "锻炼", "健身", "做一组", "做一下",
+            "做个", "练一下", "练个", "做", "练", "组",
+        ]
+        var result = value.lowercased()
+        for filler in fillers {
+            result = result.replacingOccurrences(of: filler, with: "")
+        }
+        return result.filter { character in
+            character.isLetter || character.isNumber
+        }
+    }
+
+    private static func editDistance(_ left: String, _ right: String) -> Int {
+        let lhs = Array(left)
+        let rhs = Array(right)
+        if lhs.isEmpty {
+            return rhs.count
+        }
+        if rhs.isEmpty {
+            return lhs.count
+        }
+
+        var previous = Array(0...rhs.count)
+        for (leftIndex, leftCharacter) in lhs.enumerated() {
+            var current = Array(repeating: 0, count: rhs.count + 1)
+            current[0] = leftIndex + 1
+            for (rightIndex, rightCharacter) in rhs.enumerated() {
+                let cost = leftCharacter == rightCharacter ? 0 : 1
+                current[rightIndex + 1] = min(
+                    current[rightIndex] + 1,
+                    previous[rightIndex + 1] + 1,
+                    previous[rightIndex] + cost
+                )
+            }
+            previous = current
+        }
+        return previous[rhs.count]
     }
 }

@@ -8,17 +8,15 @@ struct ReviewView: View {
     @State private var isSaving = false
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let review = model.currentWeekReview {
-                    completedReview(review)
-                } else {
-                    reviewForm
-                }
+        Group {
+            if let review = model.currentWeekReview {
+                completedReview(review)
+            } else {
+                reviewForm
             }
-            .background(Color.trellisInk.ignoresSafeArea())
-            .navigationTitle("周回顾")
         }
+        .background(Color.trellisInk.ignoresSafeArea())
+        .navigationTitle("周回顾")
     }
 
     private var reviewForm: some View {

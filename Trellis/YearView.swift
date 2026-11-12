@@ -4,57 +4,55 @@ struct YearView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    YearRingsView(
-                        progress: min(
-                            Double(recordDays) / 365,
-                            1
-                        ),
-                        days: recordDays
-                    )
-                    .frame(height: 250)
-                    .frame(maxWidth: .infinity)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                YearRingsView(
+                    progress: min(
+                        Double(recordDays) / 365,
+                        1
+                    ),
+                    days: recordDays
+                )
+                .frame(height: 250)
+                .frame(maxWidth: .infinity)
 
-                    Text("今年留下了 \(recordDays) 天记录。")
-                        .font(.system(.title3, design: .serif))
+                Text("今年留下了 \(recordDays) 天记录。")
+                    .font(.system(.title3, design: .serif))
+                    .foregroundStyle(Color.trellisBone)
+
+                summaryGrid
+
+                if !model.data.records.isEmpty {
+                    Text("最近的回声")
+                        .font(.headline)
                         .foregroundStyle(Color.trellisBone)
 
-                    summaryGrid
+                    ForEach(model.data.records.prefix(3)) { record in
+                        HStack(alignment: .top, spacing: 14) {
+                            Rectangle()
+                                .fill(Color.trellisBrass.opacity(0.5))
+                                .frame(width: 1)
 
-                    if !model.data.records.isEmpty {
-                        Text("最近的回声")
-                            .font(.headline)
-                            .foregroundStyle(Color.trellisBone)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(record.createdAt.formatted(
+                                    .dateTime.month().day()
+                                ))
+                                .font(.caption)
+                                .tracking(1)
+                                .foregroundStyle(Color.trellisBrass)
 
-                        ForEach(model.data.records.prefix(3)) { record in
-                            HStack(alignment: .top, spacing: 14) {
-                                Rectangle()
-                                    .fill(Color.trellisBrass.opacity(0.5))
-                                    .frame(width: 1)
-
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(record.createdAt.formatted(
-                                        .dateTime.month().day()
-                                    ))
-                                    .font(.caption)
-                                    .tracking(1)
-                                    .foregroundStyle(Color.trellisBrass)
-
-                                    Text(record.text)
-                                        .font(.system(.callout, design: .serif))
-                                        .foregroundStyle(Color.trellisBone)
-                                }
+                                Text(record.text)
+                                    .font(.system(.callout, design: .serif))
+                                    .foregroundStyle(Color.trellisBone)
                             }
                         }
                     }
                 }
-                .padding(22)
             }
-            .background(Color.trellisInk.ignoresSafeArea())
-            .navigationTitle("年轮")
+            .padding(22)
         }
+        .background(Color.trellisInk.ignoresSafeArea())
+        .navigationTitle("年轮")
     }
 
     private var recordDays: Int {
