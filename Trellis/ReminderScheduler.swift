@@ -140,15 +140,31 @@ final class LocalReminderScheduler {
     private func scheduleAlarm(_ plan: ReminderPlan) async throws {
         try? AlarmManager.shared.cancel(id: plan.taskID)
 
-        let alert = AlarmPresentation.Alert(
-            title: LocalizedStringResource(stringLiteral: plan.title),
-            secondaryButton: AlarmButton(
-                text: "稍后 5 分钟",
-                textColor: .white,
-                systemImageName: "zzz"
-            ),
-            secondaryButtonBehavior: .countdown
+        let title = LocalizedStringResource(stringLiteral: plan.title)
+        let snoozeButton = AlarmButton(
+            text: "稍后 5 分钟",
+            textColor: .white,
+            systemImageName: "zzz"
         )
+        let alert: AlarmPresentation.Alert
+        if #available(iOS 26.1, *) {
+            alert = AlarmPresentation.Alert(
+                title: title,
+                secondaryButton: snoozeButton,
+                secondaryButtonBehavior: .countdown
+            )
+        } else {
+            alert = AlarmPresentation.Alert(
+                title: title,
+                stopButton: AlarmButton(
+                    text: "停止",
+                    textColor: .white,
+                    systemImageName: "stop.fill"
+                ),
+                secondaryButton: snoozeButton,
+                secondaryButtonBehavior: .countdown
+            )
+        }
         let presentation = AlarmPresentation(alert: alert)
         let attributes = AlarmAttributes(
             presentation: presentation,
