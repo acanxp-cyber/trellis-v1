@@ -80,23 +80,15 @@ if (internalGroups.length === 0) {
 }
 
 for (const group of internalGroups) {
-  const updated = await api(`/v1/betaGroups/${group.id}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      data: {
-        type: "betaGroups",
-        id: group.id,
-        attributes: {
-          hasAccessToAllBuilds: true,
-        },
-      },
-    }),
-  });
+  const groupBuilds = await api(
+    `/v1/betaGroups/${group.id}/builds?limit=50`,
+  );
   console.log(JSON.stringify({
-    groupId: updated.data?.id,
-    name: updated.data?.attributes?.name,
-    hasAccessToAllBuilds:
-      updated.data?.attributes?.hasAccessToAllBuilds,
+    groupId: group.id,
+    name: group.attributes?.name,
+    hasAccessToAllBuilds: group.attributes?.hasAccessToAllBuilds,
+    buildVersions: (groupBuilds.data ?? [])
+      .map((item) => item.attributes?.version),
   }));
 }
 
@@ -117,4 +109,6 @@ console.log(JSON.stringify({
   processingState: build.attributes?.processingState,
   internalBuildState: detail.data?.attributes?.internalBuildState,
   externalBuildState: detail.data?.attributes?.externalBuildState,
+  autoNotifyEnabled: detail.data?.attributes?.autoNotifyEnabled,
+  didNotify: detail.data?.attributes?.didNotify,
 }));
