@@ -4,7 +4,9 @@ const keyId = process.env.APP_STORE_CONNECT_KEY_ID;
 const issuerId = process.env.APP_STORE_CONNECT_ISSUER_ID;
 const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
-const buildVersion = "5";
+const buildVersion = process.env.TESTFLIGHT_BUILD_VERSION || "7";
+const whatsNew = process.env.TESTFLIGHT_WHATS_NEW ||
+  "请验证：1）底栏居中语音按钮；2）说“练上肢”得到分组训练建议；3）建立一个约两分钟后的提醒，确认 iOS 系统闹钟会响并可稍后 5 分钟。";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
@@ -64,7 +66,11 @@ async function api(path, options = {}) {
     body = { raw: text };
   }
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}: ${text}`);
+    const error = new Error(
+      `${response.status} ${response.statusText}: ${text}`,
+    );
+    error.status = response.status;
+    throw error;
   }
   return body;
 }
@@ -79,40 +85,135 @@ if (!debugGroup) {
   throw new Error("Internal Debug group was not found.");
 }
 
-const builds = await api(
-  `/v1/builds?filter[app]=${appId}&filter[version]=${buildVersion}&limit=10`,
-);
-if (builds.data?.length !== 1) {
-  throw new Error(
-    `Expected exactly one build ${buildVersion}, found ${builds.data?.length ?? 0}.`,
+let build = null;
+for (let attempt = 1; attempt <= 24; attempt += 1) {
+  const builds = await api(
+    `/v1/builds?filter[app]=${appId}&filter[version]=${buildVersion}&limit=10`,
   );
+  build = builds.data?.find(
+    (item) => item.attributes?.processingState === "VALID",
+  );
+  if (build) {
+    break;
+  }
+  console.log(`Waiting for build ${buildVersion} (${attempt}/24)`);
+  await new Promise((resolve) => setTimeout(resolve, 10_000));
+}
+if (!build) {
+  throw new Error(`Build ${buildVersion} did not become VALID.`);
 }
 
-const build = builds.data[0];
-const [detail, groupBuilds] = await Promise.all([
-  api(`/v1/builds/${build.id}/buildBetaDetail`),
-  api(`/v1/betaGroups/${debugGroup.id}/builds?limit=50`),
-]);
-const isAttached = (groupBuilds.data ?? []).some(
-  (item) => item.id === build.id,
+try {
+  await api(`/v1/builds/${build.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      data: {
+        type: "builds",
+        id: build.id,
+        attributes: {
+          usesNonExemptEncryption: false,
+        },
+      },
+    }),
+  });
+} catch (error) {
+  if (error.status !== 409) {
+    throw error;
+  }
+}
+
+const localizations = await api(
+  `/v1/builds/${build.id}/betaBuildLocalizations?limit=20`,
 );
-const state = detail.data?.attributes?.internalBuildState;
+const localization = (localizations.data ?? []).find(
+  (item) => item.attributes?.locale === "zh-Hans",
+);
+if (localization) {
+  await api(`/v1/betaBuildLocalizations/${localization.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      data: {
+        type: "betaBuildLocalizations",
+        id: localization.id,
+        attributes: { whatsNew },
+      },
+    }),
+  });
+} else {
+  await api("/v1/betaBuildLocalizations", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        type: "betaBuildLocalizations",
+        attributes: {
+          locale: "zh-Hans",
+          whatsNew,
+        },
+        relationships: {
+          build: {
+            data: {
+              type: "builds",
+              id: build.id,
+            },
+          },
+        },
+      },
+    }),
+  });
+}
 
-console.log(JSON.stringify({
-  buildVersion,
+try {
+  await api(`/v1/builds/${build.id}/relationships/betaGroups`, {
+    method: "POST",
+    body: JSON.stringify({
+      data: [
+        {
+          type: "betaGroups",
+          id: debugGroup.id,
+        },
+      ],
+    }),
+  });
+} catch (error) {
+  if (![409, 422].includes(error.status)) {
+    throw error;
+  }
+  console.log(`Group attach returned ${error.status}; waiting for Apple's automatic internal distribution.`);
+}
+
+let available = false;
+let detail = null;
+let groupBuilds = null;
+for (let attempt = 1; attempt <= 24; attempt += 1) {
+  [detail, groupBuilds] = await Promise.all([
+    api(`/v1/builds/${build.id}/buildBetaDetail`),
+    api(`/v1/betaGroups/${debugGroup.id}/builds?limit=50`),
+  ]);
+  const attached = (groupBuilds.data ?? []).some(
+    (item) => item.id === build.id,
+  );
+  const state = detail.data?.attributes?.internalBuildState;
+  available = attached && state === "IN_BETA_TESTING";
+  console.log(
+    `Availability ${attempt}/24: state=${state}, attached=${attached}`,
+  );
+  if (available) {
+    break;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 10_000));
+}
+
+const result = {
   buildId: build.id,
+  buildVersion,
   processingState: build.attributes?.processingState,
-  internalBuildState: state,
+  internalBuildState: detail?.data?.attributes?.internalBuildState,
   debugGroupId: debugGroup.id,
-  debugGroupVersions: (groupBuilds.data ?? [])
+  debugGroupVersions: (groupBuilds?.data ?? [])
     .map((item) => item.attributes?.version),
-  attached: isAttached,
-}, null, 2));
-
-if (
-  build.attributes?.processingState !== "VALID" ||
-  state !== "IN_BETA_TESTING" ||
-  !isAttached
-) {
-  throw new Error("Build 5 is not yet available in the internal Debug group.");
+  attached: available,
+};
+console.log(JSON.stringify(result, null, 2));
+if (!available) {
+  throw new Error(`Build ${buildVersion} did not become available in Debug.`);
 }
