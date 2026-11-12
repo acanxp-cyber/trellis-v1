@@ -92,6 +92,61 @@ final class AppModelTests: XCTestCase {
             ["先做", "晚一点", "没有时间的任务"]
         )
     }
+
+    func testClearTodayRemovesOnlyTodayUnfinishedTasksAndCanUndo() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Shanghai"))
+        let now = calendar.date(
+            from: DateComponents(
+                year: 2026,
+                month: 11,
+                day: 13,
+                hour: 10
+            )
+        )!
+        let repository = InMemoryRepository()
+        let todayOpenID = UUID()
+        let todayDoneID = UUID()
+        let tomorrowID = UUID()
+        var data = AppData.empty
+        data.tasks = [
+            GrowthTask(
+                id: todayOpenID,
+                title: "今天未完成",
+                scheduledAt: now.addingTimeInterval(3_600)
+            ),
+            GrowthTask(
+                id: todayDoneID,
+                title: "今天已完成",
+                createdAt: now,
+                completedAt: now
+            ),
+            GrowthTask(
+                id: tomorrowID,
+                title: "明天",
+                scheduledAt: now.addingTimeInterval(86_400)
+            ),
+        ]
+        await repository.save(data)
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+
+        let receipt = try XCTUnwrap(
+            await model.clearUnfinishedTasksToday(now: now)
+        )
+
+        XCTAssertEqual(receipt.tasks.map(\.id), [todayOpenID])
+        XCTAssertEqual(
+            Set(model.data.tasks.map(\.id)),
+            Set([todayDoneID, tomorrowID])
+        )
+
+        XCTAssertTrue(await model.restoreClearedPlan(receipt))
+        XCTAssertEqual(
+            Set(model.data.tasks.map(\.id)),
+            Set([todayOpenID, todayDoneID, tomorrowID])
+        )
+    }
 }
 
 private actor InMemoryRepository: AppRepository {
