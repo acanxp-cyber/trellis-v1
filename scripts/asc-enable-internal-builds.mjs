@@ -6,7 +6,7 @@ const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
 const buildVersion = process.env.TESTFLIGHT_BUILD_VERSION || "7";
 const whatsNew = process.env.TESTFLIGHT_WHATS_NEW ||
-  "请验证：1）底栏居中语音按钮；2）说“练上肢”得到分组训练建议；3）建立一个约两分钟后的提醒，确认 iOS 系统闹钟会响并可稍后 5 分钟。";
+  "请验证：1）今天页左上“清零今天”只清除未完成计划，并可在 10 秒内撤销；2）记录页可添加文字、拍照、录像、相册、语音、手绘、像素画和贴纸；3）语音说“练上肢”或明确分钟、组数、次数时，健身安排会保留你的要求。";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
