@@ -33,10 +33,10 @@
 - Produce: `AppModel.clearUnfinishedTasksToday() async -> ClearPlanReceipt?`
 - Produce: `AppModel.restoreClearedPlan(_ receipt: ClearPlanReceipt) async -> Bool`
 
-- [ ] Write tests proving only today’s unfinished tasks are removed and can be restored.
+- [x] Write tests proving only today’s unfinished tasks are removed and can be restored.
 - [ ] Run tests and verify failure because the reset API is missing.
-- [ ] Implement receipt-based clearing and restoration.
-- [ ] Add “清零今天” toolbar action, confirmation, and 10-second undo banner.
+- [x] Implement receipt-based clearing and restoration.
+- [x] Add “清零今天” toolbar action, confirmation, and 10-second undo banner.
 - [ ] Run tests and commit.
 
 ### Task 2: Promote Records and Media Metadata
@@ -52,10 +52,10 @@
 - Produce: `RecordAttachment` and `RecordSketch` Codable models.
 - Produce: `RecordMediaStore.save(data:kind:recordID:)`, `load`, and `delete`.
 
-- [ ] Write migration test proving schema v1 records still decode.
-- [ ] Implement schema v2 and attachment metadata.
-- [ ] Add local media directory with complete file protection and backup exclusion.
-- [ ] Move Records into the bottom dock and remove it from More.
+- [x] Write migration test proving schema v1 records still decode.
+- [x] Implement schema v2 and attachment metadata.
+- [x] Add local media directory with complete file protection and backup exclusion.
+- [x] Move Records into the bottom dock and remove it from More.
 - [ ] Commit.
 
 ### Task 3: Camera, Video, and Voice Record Capture
@@ -70,11 +70,11 @@
 - Consume: `RecordMediaStore`
 - Produce: record attachments for photo, video, and audio.
 
-- [ ] Add camera/photo/video permission strings.
-- [ ] Implement PhotosPicker multi-photo import and video import.
-- [ ] Implement local voice memo capture.
-- [ ] Show attachment thumbnails, playback, and deletion.
-- [ ] Verify no media is written to JSON payloads.
+- [x] Add camera/photo/video permission strings.
+- [x] Implement PhotosPicker multi-photo import and video import.
+- [x] Implement local voice memo capture.
+- [x] Show attachment thumbnails, playback, and deletion.
+- [x] Verify no media is written to JSON payloads.
 - [ ] Commit.
 
 ### Task 4: Drawing, Pixel Art, and Stickers
@@ -89,9 +89,9 @@
 - Produce: persisted PNG sketch attachments.
 - Produce: sticker layer transforms encoded in `RecordAttachment`.
 
-- [ ] Add PencilKit drawing editor with clear/undo/save.
-- [ ] Add fixed-grid pixel editor with palette, eraser, undo, and export.
-- [ ] Add original cartoon sticker sheet with drag/scale/rotate.
+- [x] Add PencilKit drawing editor with clear/undo/save.
+- [x] Add fixed-grid pixel editor with palette, eraser, undo, and export.
+- [x] Add original cartoon sticker sheet with drag/scale/rotate.
 - [ ] Persist flattened preview and editable metadata.
 - [ ] Commit.
 
@@ -106,10 +106,10 @@
 - Produce: `WorkoutRequest` with time, activity, duration, sets, reps, equipment, and difficulty.
 - Produce: `WorkoutIntentParser.parse(_:)`.
 
-- [ ] Test “上午十点，做 5 分钟拉伸” keeps 10:00 and 5 minutes.
-- [ ] Test “上午十点，做 80 个俯卧撑一组，共 2 组” keeps `2 x 80`.
-- [ ] Test equipment, running, jumping, and sport phrases.
-- [ ] Implement parsing and explicit-over-template precedence.
+- [x] Test “上午十点，做 5 分钟拉伸” keeps 10:00 and 5 minutes.
+- [x] Test “上午十点，做 80 个俯卧撑一组，共 2 组” keeps `2 x 80`.
+- [x] Test equipment, running, jumping, and sport phrases.
+- [x] Implement parsing and explicit-over-template precedence.
 - [ ] Commit.
 
 ### Task 6: Expand Exercise Taxonomy
@@ -123,9 +123,9 @@
 - Produce activity categories: strength, cardio, running, jumping, cycling, sport, mobility, equipment.
 - Consume: public-domain `free-exercise-db` data where accurately mapped.
 
-- [ ] Add equipment and sport definitions.
-- [ ] Add duration, distance, interval, and set/rep workout builders.
-- [ ] Add filters for equipment and activity type.
+- [x] Add equipment and sport definitions.
+- [x] Add duration, distance, interval, and set/rep workout builders.
+- [x] Add filters for equipment and activity type.
 - [ ] Keep animation media limited to accurately mapped public-domain assets.
 - [ ] Commit.
 

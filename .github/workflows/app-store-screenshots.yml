@@ -56,7 +56,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/Screenshots.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
-            -only-testing:TrellisUITests/ScreenshotUITests \
+            -only-testing:TrellisUITests/ScreenshotUITests/testCaptureScreenshots \
             test
 
       - name: Export attachments

@@ -29,7 +29,7 @@ struct MoreView: View {
                     LabeledContent("健康数据", value: "不持久化、不同步")
                     LabeledContent("iCloud 备份", value: "已排除")
 
-                    Button("导出全部数据") {
+                    Button("导出任务与文字数据") {
                         Task {
                             guard let data = await model.exportData() else {
                                 exportFailed = true
