@@ -270,6 +270,7 @@ final class ModernSpeechCaptureSession {
             sourceBuffers,
             destinationBuffers
         ) {
+            var destinationBuffer = destinationBuffer
             guard
                 let sourceData = sourceBuffer.mData,
                 let destinationData = destinationBuffer.mData

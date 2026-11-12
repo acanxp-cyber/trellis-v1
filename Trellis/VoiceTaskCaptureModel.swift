@@ -167,7 +167,7 @@ final class VoiceTaskCaptureModel {
     }
 
     private func startAudioCapture(
-        handler: AVAudioNodeTapBlock
+        handler: @escaping AVAudioNodeTapBlock
     ) throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
