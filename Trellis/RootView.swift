@@ -28,6 +28,17 @@ struct RootView: View {
                 VoiceTaskCaptureView()
                     .presentationDetents([.large])
             }
+            .task {
+                await model.bootstrap()
+                let reminderTasks = model.openTasks.filter {
+                    $0.reminderAt != nil
+                }
+                if !reminderTasks.isEmpty {
+                    _ = await LocalReminderScheduler().schedule(
+                        reminderTasks
+                    )
+                }
+            }
             .tint(.trellisBrass)
             .preferredColorScheme(.dark)
             .overlay {
