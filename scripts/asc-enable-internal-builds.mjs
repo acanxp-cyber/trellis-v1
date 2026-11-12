@@ -91,6 +91,8 @@ for (const group of internalGroups) {
   }));
 }
 
+let build5 = null;
+
 for (const version of ["4", "5"]) {
   const builds = await api(
     `/v1/builds?filter[app]=${appId}&filter[version]=${version}&limit=10`,
@@ -102,6 +104,9 @@ for (const version of ["4", "5"]) {
   }
 
   const build = builds.data[0];
+  if (version === "5") {
+    build5 = build;
+  }
   const detail = await api(`/v1/builds/${build.id}/buildBetaDetail`);
   const localizations = await api(
     `/v1/builds/${build.id}/betaBuildLocalizations`,
@@ -124,3 +129,55 @@ for (const version of ["4", "5"]) {
     reviewSubmission: reviewSubmission.data?.attributes ?? null,
   }));
 }
+
+if (!build5) {
+  throw new Error("Build 5 was not found.");
+}
+
+const debugGroup = internalGroups.find(
+  (group) => group.attributes?.name === "Debug",
+);
+if (!debugGroup) {
+  throw new Error("Internal Debug group was not found.");
+}
+
+await api(
+  `/v1/betaGroups/${debugGroup.id}/relationships/builds`,
+  {
+    method: "POST",
+    body: JSON.stringify({
+      data: [
+        {
+          type: "builds",
+          id: build5.id,
+        },
+      ],
+    }),
+  },
+);
+
+const updatedGroups = await api(
+  `/v1/betaGroups?filter[app]=${appId}&limit=200`,
+);
+const updatedDebugGroup = (updatedGroups.data ?? []).find(
+  (group) => group.id === debugGroup.id,
+);
+const updatedGroupBuilds = await api(
+  `/v1/betaGroups/${debugGroup.id}/builds?limit=50`,
+);
+const updatedDetail = await api(
+  `/v1/builds/${build5.id}/buildBetaDetail`,
+);
+
+console.log(JSON.stringify({
+  updatedDebugGroup: {
+    id: updatedDebugGroup?.id,
+    name: updatedDebugGroup?.attributes?.name,
+    hasAccessToAllBuilds:
+      updatedDebugGroup?.attributes?.hasAccessToAllBuilds,
+  },
+  buildVersions: (updatedGroupBuilds.data ?? [])
+    .map((item) => item.attributes?.version),
+  build5State:
+    updatedDetail.data?.attributes?.internalBuildState,
+}));
