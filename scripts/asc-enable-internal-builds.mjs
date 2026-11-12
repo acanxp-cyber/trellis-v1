@@ -134,50 +134,47 @@ if (!build5) {
   throw new Error("Build 5 was not found.");
 }
 
-const debugGroup = internalGroups.find(
-  (group) => group.attributes?.name === "Debug",
+const testers = await api("/v1/betaTesters?limit=200");
+const tester = (testers.data ?? []).find(
+  (item) => item.attributes?.email === "120720375@qq.com",
 );
-if (!debugGroup) {
-  throw new Error("Internal Debug group was not found.");
+if (!tester) {
+  throw new Error("The internal tester account was not found.");
 }
 
 await api(
-  `/v1/betaGroups/${debugGroup.id}/relationships/builds`,
+  `/v1/builds/${build5.id}/relationships/individualTesters`,
   {
     method: "POST",
     body: JSON.stringify({
       data: [
         {
-          type: "builds",
-          id: build5.id,
+          type: "betaTesters",
+          id: tester.id,
         },
       ],
     }),
   },
 );
 
-const updatedGroups = await api(
-  `/v1/betaGroups?filter[app]=${appId}&limit=200`,
-);
-const updatedDebugGroup = (updatedGroups.data ?? []).find(
-  (group) => group.id === debugGroup.id,
-);
-const updatedGroupBuilds = await api(
-  `/v1/betaGroups/${debugGroup.id}/builds?limit=50`,
+const buildTesters = await api(
+  `/v1/builds/${build5.id}/individualTesters?limit=50`,
 );
 const updatedDetail = await api(
   `/v1/builds/${build5.id}/buildBetaDetail`,
 );
 
 console.log(JSON.stringify({
-  updatedDebugGroup: {
-    id: updatedDebugGroup?.id,
-    name: updatedDebugGroup?.attributes?.name,
-    hasAccessToAllBuilds:
-      updatedDebugGroup?.attributes?.hasAccessToAllBuilds,
+  tester: {
+    id: tester.id,
+    email: tester.attributes?.email,
+    firstName: tester.attributes?.firstName,
+    lastName: tester.attributes?.lastName,
   },
-  buildVersions: (updatedGroupBuilds.data ?? [])
-    .map((item) => item.attributes?.version),
+  buildTesters: (buildTesters.data ?? []).map((item) => ({
+    id: item.id,
+    email: item.attributes?.email,
+  })),
   build5State:
     updatedDetail.data?.attributes?.internalBuildState,
 }));
