@@ -23,6 +23,7 @@ targets:
       - path: Trellis
         excludes:
           - Info.plist
+      - path: Sources/AudioTapBridge
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.acanxp.trellis

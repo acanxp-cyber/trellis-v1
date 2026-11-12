@@ -33,6 +33,9 @@ jobs:
           plutil -lint Trellis/Info.plist
           plutil -lint Trellis/Resources/PrivacyInfo.xcprivacy
 
+      - name: Run audio tap concurrency regression
+        run: swift test
+
       - name: Build for simulator
         run: |
           xcodebuild \
