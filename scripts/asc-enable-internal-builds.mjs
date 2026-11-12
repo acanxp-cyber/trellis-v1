@@ -4,6 +4,7 @@ const keyId = process.env.APP_STORE_CONNECT_KEY_ID;
 const issuerId = process.env.APP_STORE_CONNECT_ISSUER_ID;
 const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
+const buildVersion = "5";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
@@ -71,197 +72,47 @@ async function api(path, options = {}) {
 const groups = await api(
   `/v1/betaGroups?filter[app]=${appId}&limit=200`,
 );
-const internalGroups = (groups.data ?? []).filter(
-  (group) => group.attributes?.isInternalGroup,
+const debugGroup = (groups.data ?? []).find(
+  (group) => group.attributes?.name === "Debug",
 );
-if (internalGroups.length === 0) {
-  throw new Error("No internal TestFlight group was found.");
+if (!debugGroup) {
+  throw new Error("Internal Debug group was not found.");
 }
 
-for (const group of internalGroups) {
-  const groupBuilds = await api(
-    `/v1/betaGroups/${group.id}/builds?limit=50`,
-  );
-  console.log(JSON.stringify({
-    groupId: group.id,
-    name: group.attributes?.name,
-    hasAccessToAllBuilds: group.attributes?.hasAccessToAllBuilds,
-    buildVersions: (groupBuilds.data ?? [])
-      .map((item) => item.attributes?.version),
-  }));
-}
-
-let build5 = null;
-
-for (const version of ["4", "5"]) {
-  const builds = await api(
-    `/v1/builds?filter[app]=${appId}&filter[version]=${version}&limit=10`,
-  );
-  if (builds.data?.length !== 1) {
-    throw new Error(
-      `Expected exactly one build ${version}, found ${builds.data?.length ?? 0}.`,
-    );
-  }
-
-  const build = builds.data[0];
-  if (version === "5") {
-    build5 = build;
-  }
-  const detail = await api(`/v1/builds/${build.id}/buildBetaDetail`);
-  const localizations = await api(
-    `/v1/builds/${build.id}/betaBuildLocalizations`,
-  );
-  const reviewSubmission = await api(
-    `/v1/builds/${build.id}/betaAppReviewSubmission`,
-  );
-  console.log(JSON.stringify({
-    buildId: build.id,
-    version: build.attributes?.version,
-    processingState: build.attributes?.processingState,
-    internalBuildState: detail.data?.attributes?.internalBuildState,
-    externalBuildState: detail.data?.attributes?.externalBuildState,
-    autoNotifyEnabled: detail.data?.attributes?.autoNotifyEnabled,
-    didNotify: detail.data?.attributes?.didNotify,
-    localizations: (localizations.data ?? []).map((item) => ({
-      locale: item.attributes?.locale,
-      whatsNew: item.attributes?.whatsNew,
-    })),
-    reviewSubmission: reviewSubmission.data?.attributes ?? null,
-  }));
-}
-
-if (!build5) {
-  throw new Error("Build 5 was not found.");
-}
-
-await api(`/v1/buildBetaDetails/${build5.id}`, {
-  method: "PATCH",
-  body: JSON.stringify({
-    data: {
-      type: "buildBetaDetails",
-      id: build5.id,
-      attributes: {
-        autoNotifyEnabled: true,
-      },
-    },
-  }),
-});
-
-const groupsAfterInspection = await api(
-  `/v1/betaGroups?filter[app]=${appId}&limit=200`,
+const builds = await api(
+  `/v1/builds?filter[app]=${appId}&filter[version]=${buildVersion}&limit=10`,
 );
-let voiceFixGroup = (groupsAfterInspection.data ?? []).find(
-  (group) => group.attributes?.name === "Voice Fix 5",
-);
-if (!voiceFixGroup) {
-  const createdGroup = await api("/v1/betaGroups", {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        type: "betaGroups",
-        attributes: {
-          name: "Voice Fix 5",
-          isInternalGroup: true,
-        },
-        relationships: {
-          app: {
-            data: {
-              type: "apps",
-              id: appId,
-            },
-          },
-        },
-      },
-    }),
-  });
-  voiceFixGroup = createdGroup.data;
-}
-
-const testers = await api("/v1/betaTesters?limit=200");
-const tester = (testers.data ?? []).find(
-  (item) => item.attributes?.email === "120720375@qq.com",
-);
-if (!tester) {
-  throw new Error("The internal tester account was not found.");
-}
-
-await api(`/v1/builds/${build5.id}/relationships/betaGroups`, {
-  method: "POST",
-  body: JSON.stringify({
-    data: [
-      {
-        type: "betaGroups",
-        id: voiceFixGroup.id,
-      },
-    ],
-  }),
-});
-
-let updatedDetail = null;
-let updatedGroupBuilds = null;
-let buildIsAvailable = false;
-
-for (let attempt = 1; attempt <= 12; attempt += 1) {
-  updatedDetail = await api(
-    `/v1/builds/${build5.id}/buildBetaDetail`,
+if (builds.data?.length !== 1) {
+  throw new Error(
+    `Expected exactly one build ${buildVersion}, found ${builds.data?.length ?? 0}.`,
   );
-  updatedGroupBuilds = await api(
-    `/v1/betaGroups/${voiceFixGroup.id}/builds?limit=50`,
-  );
-  buildIsAvailable =
-    updatedDetail.data?.attributes?.internalBuildState ===
-      "IN_BETA_TESTING" &&
-    (updatedGroupBuilds.data ?? []).some(
-      (item) => item.id === build5.id,
-    );
-  if (buildIsAvailable) {
-    break;
-  }
-  console.log(
-    `Waiting for TestFlight availability (${attempt}/12): ${updatedDetail.data?.attributes?.internalBuildState}`,
-  );
-  await new Promise((resolve) => setTimeout(resolve, 10_000));
 }
 
-if (!buildIsAvailable) {
-  throw new Error("Build 5 did not become available to internal testers.");
-}
-
-await api(
-  `/v1/betaGroups/${voiceFixGroup.id}/relationships/betaTesters`,
-  {
-    method: "POST",
-    body: JSON.stringify({
-      data: [
-        {
-          type: "betaTesters",
-          id: tester.id,
-        },
-      ],
-    }),
-  },
+const build = builds.data[0];
+const [detail, groupBuilds] = await Promise.all([
+  api(`/v1/builds/${build.id}/buildBetaDetail`),
+  api(`/v1/betaGroups/${debugGroup.id}/builds?limit=50`),
+]);
+const isAttached = (groupBuilds.data ?? []).some(
+  (item) => item.id === build.id,
 );
-
-const groupTesters = await api(
-  `/v1/betaGroups/${voiceFixGroup.id}/betaTesters?limit=50`,
-);
+const state = detail.data?.attributes?.internalBuildState;
 
 console.log(JSON.stringify({
-  voiceFixGroup: {
-    id: voiceFixGroup.id,
-    name: voiceFixGroup.attributes?.name,
-  },
-  tester: {
-    id: tester.id,
-    email: tester.attributes?.email,
-  },
-  groupTesters: (groupTesters.data ?? []).map((item) => ({
-    id: item.id,
-    email: item.attributes?.email,
-  })),
-  buildVersions: (updatedGroupBuilds.data ?? [])
+  buildVersion,
+  buildId: build.id,
+  processingState: build.attributes?.processingState,
+  internalBuildState: state,
+  debugGroupId: debugGroup.id,
+  debugGroupVersions: (groupBuilds.data ?? [])
     .map((item) => item.attributes?.version),
-  build5State:
-    updatedDetail.data?.attributes?.internalBuildState,
-  didNotify: updatedDetail.data?.attributes?.didNotify,
-}));
+  attached: isAttached,
+}, null, 2));
+
+if (
+  build.attributes?.processingState !== "VALID" ||
+  state !== "IN_BETA_TESTING" ||
+  !isAttached
+) {
+  throw new Error("Build 5 is not yet available in the internal Debug group.");
+}
