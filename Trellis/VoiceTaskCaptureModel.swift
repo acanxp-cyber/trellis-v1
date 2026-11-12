@@ -10,6 +10,7 @@ final class VoiceTaskCaptureModel {
     private(set) var isRecording = false
     private(set) var isStarting = false
     private(set) var statusMessage: String?
+    private(set) var fitnessRecommendation: FitnessRoutineRecommendation?
     var drafts: [VoiceTaskDraft] = []
     var errorMessage: String?
 
@@ -233,6 +234,7 @@ final class VoiceTaskCaptureModel {
     private func resetResult() {
         transcript = ""
         drafts = []
+        fitnessRecommendation = nil
     }
 
     private nonisolated static func makeLegacyTapHandler(
@@ -248,12 +250,42 @@ final class VoiceTaskCaptureModel {
             return
         }
 
-        let parsed = parser.parse(transcript)
+        var parsed = parser.parse(transcript)
+        let recommendation = FitnessIntentParser.recommendation(
+            from: transcript
+        )
+        fitnessRecommendation = recommendation
+
+        if let recommendation {
+            if let fitnessIndex = parsed.firstIndex(where: {
+                FitnessIntentParser.containsFitnessIntent($0.title)
+            }) {
+                parsed[fitnessIndex].title =
+                    "\(recommendation.title) · \(recommendation.durationMinutes) 分钟"
+                parsed[fitnessIndex].reminderLeadMinutes = max(
+                    parsed[fitnessIndex].reminderLeadMinutes,
+                    5
+                )
+            } else if parsed.isEmpty {
+                parsed = [
+                    recommendation.taskDraft(
+                        scheduledAt: FitnessIntentParser.suggestedStart()
+                    ),
+                ]
+            } else {
+                parsed.append(
+                    recommendation.taskDraft(
+                        scheduledAt: FitnessIntentParser.suggestedStart()
+                    )
+                )
+            }
+        }
+
         drafts = parsed
         if parsed.isEmpty {
             errorMessage = transcript.isEmpty
                 ? "没有听清，请再说一次。"
-                : "没有识别到清楚的时间。请说“2点开会”或“下午4点去跑步”这样的时间加任务。"
+                : "没有识别到清楚的时间或训练目标。请说“2点开会”或“练上肢”。"
         }
     }
 

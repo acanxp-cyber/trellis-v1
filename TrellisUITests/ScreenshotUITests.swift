@@ -23,17 +23,21 @@ final class ScreenshotUITests: XCTestCase {
         capture("02-voice-capture")
         app.buttons["取消"].tap()
 
-        app.tabBars.buttons["记录"].tap()
+        app.buttons["tab-records"].tap()
         capture("03-records")
 
-        app.tabBars.buttons["回顾"].tap()
-        capture("04-review")
+        app.buttons["tab-fitness"].tap()
+        XCTAssertTrue(app.staticTexts["今天练什么？"].waitForExistence(timeout: 5))
+        capture("04-fitness")
 
-        app.tabBars.buttons["年轮"].tap()
-        capture("05-year")
+        app.buttons["tab-review"].tap()
+        capture("05-review")
 
-        app.tabBars.buttons["更多"].tap()
-        capture("06-more")
+        app.buttons["tab-year"].tap()
+        capture("06-year")
+
+        app.buttons["tab-more"].tap()
+        capture("07-more")
     }
 
     func testVoiceCaptureTapDoesNotTerminateApp() throws {

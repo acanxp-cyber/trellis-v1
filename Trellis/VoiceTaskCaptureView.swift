@@ -16,6 +16,11 @@ struct VoiceTaskCaptureView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     intro
                     recordingControl
+
+                    if let recommendation = capture.fitnessRecommendation {
+                        fitnessRecommendationCard(recommendation)
+                    }
+
                     transcriptCard
 
                     if let errorMessage = capture.errorMessage {
@@ -76,10 +81,18 @@ struct VoiceTaskCaptureView: View {
                 .font(.system(.title2, design: .serif))
                 .foregroundStyle(Color.trellisBone)
 
-            Text("例如：“12点给客户打电话，下午2点开会，提前5分钟到会议室，6点回家。”")
+            Text("例如：“12点给客户打电话，下午2点开会”；也可以直接说“练上肢”或“练核心”。")
                 .font(.callout)
                 .foregroundStyle(Color.trellisAsh)
         }
+    }
+
+    private func fitnessRecommendationCard(
+        _ recommendation: FitnessRoutineRecommendation
+    ) -> some View {
+        FitnessRoutinePlanView(recommendation: recommendation)
+            .trellisCard()
+            .accessibilityIdentifier("fitness-recommendation")
     }
 
     private var recordingControl: some View {
@@ -304,14 +317,22 @@ struct VoiceTaskCaptureView: View {
             }
 
             if hasReminders {
-                let authorized = await scheduler.requestAuthorization()
-                if authorized {
-                    let count = await scheduler.schedule(savedTasks)
-                    savedMessage = count > 0
-                        ? "\(savedTasks.count) 个任务已加入今天，\(count) 个提醒已设置。"
-                        : "任务已保存；提醒时间已过，因此没有创建新的系统通知。"
+                let result = await scheduler.schedule(savedTasks)
+                if result.scheduledCount > 0 {
+                    let channel = result.channel == .alarmKit
+                        ? "系统闹钟"
+                        : "普通通知"
+                    let suffix = result.failedCount > 0
+                        ? "；另有 \(result.failedCount) 个提醒设置失败"
+                        : ""
+                    savedMessage = "\(savedTasks.count) 个任务已加入今天，\(result.scheduledCount) 个\(channel)已设置\(suffix)。"
+                    if result.channel == .notification {
+                        savedMessage? += "普通通知可能受静音或专注模式影响。"
+                    }
+                } else if result.eligibleCount == 0 {
+                    savedMessage = "任务已保存；提醒时间已经过去，因此没有创建闹钟。"
                 } else {
-                    savedMessage = "任务已保存，但系统通知权限未开启。你仍可在“今天”查看时间线。"
+                    savedMessage = "任务已保存，但闹钟和通知权限未开启。请到“设置 > SOMETHING”中允许提醒。"
                 }
             } else {
                 savedMessage = "\(savedTasks.count) 个任务已加入今天。"

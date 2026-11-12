@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于把你口述的日程分成任务；录音不会保存或上传。</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>用于在你选定的提醒时间响铃，确保重要安排不会因为静音或专注模式被错过。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>用于在本机把口述内容识别成任务和时间。</string>
 	<key>UIApplicationSceneManifest</key>
