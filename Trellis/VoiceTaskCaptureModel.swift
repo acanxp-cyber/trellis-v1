@@ -128,9 +128,9 @@ final class VoiceTaskCaptureModel {
         request.requiresOnDeviceRecognition = true
         request.addsPunctuation = true
 
-        try startAudioCapture { buffer in
-            request.append(buffer)
-        }
+        try startAudioCapture(
+            handler: Self.makeLegacyTapHandler(for: request)
+        )
 
         legacyRecognizer = recognizer
         legacyRequest = request
@@ -167,7 +167,7 @@ final class VoiceTaskCaptureModel {
     }
 
     private func startAudioCapture(
-        onBuffer: @escaping (AVAudioPCMBuffer) -> Void
+        handler: AVAudioNodeTapBlock
     ) throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
@@ -190,10 +190,9 @@ final class VoiceTaskCaptureModel {
         inputNode.installTap(
             onBus: 0,
             bufferSize: 4_096,
-            format: format
-        ) { buffer, _ in
-            onBuffer(buffer)
-        }
+            format: format,
+            block: handler
+        )
         hasInstalledTap = true
         audioEngine = engine
         engine.prepare()
@@ -234,6 +233,14 @@ final class VoiceTaskCaptureModel {
     private func resetResult() {
         transcript = ""
         drafts = []
+    }
+
+    private nonisolated static func makeLegacyTapHandler(
+        for request: SFSpeechAudioBufferRecognitionRequest
+    ) -> AVAudioNodeTapBlock {
+        { buffer, _ in
+            request.append(buffer)
+        }
     }
 
     private func parseTranscriptIfNeeded(force: Bool = false) {
