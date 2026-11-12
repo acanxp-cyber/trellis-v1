@@ -55,6 +55,13 @@ final class SpeechAnalyzerSupportTests: XCTestCase {
 
     @available(iOS 26.0, *)
     func testChineseSpeechAnalyzerTranscribesBundledAudio() async throws {
+        guard ProcessInfo.processInfo.environment[
+            "RUN_SPEECH_ANALYZER_INTEGRATION"
+        ] == "1" else {
+            throw XCTSkip(
+                "Run this device integration test with RUN_SPEECH_ANALYZER_INTEGRATION=1 after installing the Chinese speech asset."
+            )
+        }
         guard SpeechTranscriber.isAvailable else {
             throw XCTSkip(
                 "SpeechTranscriber is unavailable on this simulator or device."
