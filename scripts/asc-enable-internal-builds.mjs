@@ -90,9 +90,21 @@ for (let attempt = 1; attempt <= 24; attempt += 1) {
   const builds = await api(
     `/v1/builds?filter[app]=${appId}&filter[version]=${buildVersion}&limit=10`,
   );
-  build = builds.data?.find(
-    (item) => item.attributes?.processingState === "VALID",
-  );
+  for (const candidate of builds.data ?? []) {
+    try {
+      const detail = await api(`/v1/builds/${candidate.id}`);
+      if (
+        detail.data?.attributes?.processingState === "VALID"
+      ) {
+        build = detail.data;
+        break;
+      }
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
+  }
   if (build) {
     break;
   }
