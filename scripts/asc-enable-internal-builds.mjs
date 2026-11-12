@@ -147,13 +147,66 @@ await api(`/v1/buildBetaDetails/${build5.id}`, {
   }),
 });
 
+const groupsAfterInspection = await api(
+  `/v1/betaGroups?filter[app]=${appId}&limit=200`,
+);
+let voiceFixGroup = (groupsAfterInspection.data ?? []).find(
+  (group) => group.attributes?.name === "Voice Fix 5",
+);
+if (!voiceFixGroup) {
+  const createdGroup = await api("/v1/betaGroups", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        type: "betaGroups",
+        attributes: {
+          name: "Voice Fix 5",
+          isInternalGroup: true,
+        },
+        relationships: {
+          app: {
+            data: {
+              type: "apps",
+              id: appId,
+            },
+          },
+        },
+      },
+    }),
+  });
+  voiceFixGroup = createdGroup.data;
+}
+
+const testers = await api("/v1/betaTesters?limit=200");
+const tester = (testers.data ?? []).find(
+  (item) => item.attributes?.email === "120720375@qq.com",
+);
+if (!tester) {
+  throw new Error("The internal tester account was not found.");
+}
+
+await api(
+  `/v1/betaGroups/${voiceFixGroup.id}/relationships/betaTesters`,
+  {
+    method: "POST",
+    body: JSON.stringify({
+      data: [
+        {
+          type: "betaTesters",
+          id: tester.id,
+        },
+      ],
+    }),
+  },
+);
+
 await api(`/v1/builds/${build5.id}/relationships/betaGroups`, {
   method: "POST",
   body: JSON.stringify({
     data: [
       {
         type: "betaGroups",
-        id: internalGroups[0].id,
+        id: voiceFixGroup.id,
       },
     ],
   }),
@@ -168,7 +221,7 @@ for (let attempt = 1; attempt <= 12; attempt += 1) {
     `/v1/builds/${build5.id}/buildBetaDetail`,
   );
   updatedGroupBuilds = await api(
-    `/v1/betaGroups/${internalGroups[0].id}/builds?limit=50`,
+    `/v1/betaGroups/${voiceFixGroup.id}/builds?limit=50`,
   );
   buildIsAvailable =
     updatedDetail.data?.attributes?.internalBuildState ===
@@ -190,6 +243,14 @@ if (!buildIsAvailable) {
 }
 
 console.log(JSON.stringify({
+  voiceFixGroup: {
+    id: voiceFixGroup.id,
+    name: voiceFixGroup.attributes?.name,
+  },
+  tester: {
+    id: tester.id,
+    email: tester.attributes?.email,
+  },
   buildVersions: (updatedGroupBuilds.data ?? [])
     .map((item) => item.attributes?.version),
   build5State:
