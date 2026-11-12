@@ -134,47 +134,57 @@ if (!build5) {
   throw new Error("Build 5 was not found.");
 }
 
-const testers = await api("/v1/betaTesters?limit=200");
-const tester = (testers.data ?? []).find(
-  (item) => item.attributes?.email === "120720375@qq.com",
-);
-if (!tester) {
-  throw new Error("The internal tester account was not found.");
+await api("/v1/buildBetaNotifications", {
+  method: "POST",
+  body: JSON.stringify({
+    data: {
+      type: "buildBetaNotifications",
+      relationships: {
+        build: {
+          data: {
+            type: "builds",
+            id: build5.id,
+          },
+        },
+      },
+    },
+  }),
+});
+
+let updatedDetail = null;
+let updatedGroupBuilds = null;
+let buildIsAvailable = false;
+
+for (let attempt = 1; attempt <= 12; attempt += 1) {
+  updatedDetail = await api(
+    `/v1/builds/${build5.id}/buildBetaDetail`,
+  );
+  updatedGroupBuilds = await api(
+    `/v1/betaGroups/${internalGroups[0].id}/builds?limit=50`,
+  );
+  buildIsAvailable =
+    updatedDetail.data?.attributes?.internalBuildState ===
+      "IN_BETA_TESTING" &&
+    (updatedGroupBuilds.data ?? []).some(
+      (item) => item.id === build5.id,
+    );
+  if (buildIsAvailable) {
+    break;
+  }
+  console.log(
+    `Waiting for TestFlight availability (${attempt}/12): ${updatedDetail.data?.attributes?.internalBuildState}`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 10_000));
 }
 
-await api(
-  `/v1/builds/${build5.id}/relationships/individualTesters`,
-  {
-    method: "POST",
-    body: JSON.stringify({
-      data: [
-        {
-          type: "betaTesters",
-          id: tester.id,
-        },
-      ],
-    }),
-  },
-);
-
-const buildTesters = await api(
-  `/v1/builds/${build5.id}/individualTesters?limit=50`,
-);
-const updatedDetail = await api(
-  `/v1/builds/${build5.id}/buildBetaDetail`,
-);
+if (!buildIsAvailable) {
+  throw new Error("Build 5 did not become available to internal testers.");
+}
 
 console.log(JSON.stringify({
-  tester: {
-    id: tester.id,
-    email: tester.attributes?.email,
-    firstName: tester.attributes?.firstName,
-    lastName: tester.attributes?.lastName,
-  },
-  buildTesters: (buildTesters.data ?? []).map((item) => ({
-    id: item.id,
-    email: item.attributes?.email,
-  })),
+  buildVersions: (updatedGroupBuilds.data ?? [])
+    .map((item) => item.attributes?.version),
   build5State:
     updatedDetail.data?.attributes?.internalBuildState,
+  didNotify: updatedDetail.data?.attributes?.didNotify,
 }));
