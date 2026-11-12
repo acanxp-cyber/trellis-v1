@@ -141,26 +141,21 @@ await api(`/v1/buildBetaDetails/${build5.id}`, {
       type: "buildBetaDetails",
       id: build5.id,
       attributes: {
-        autoNotifyEnabled: false,
+        autoNotifyEnabled: true,
       },
     },
   }),
 });
 
-await api("/v1/buildBetaNotifications", {
+await api(`/v1/builds/${build5.id}/relationships/betaGroups`, {
   method: "POST",
   body: JSON.stringify({
-    data: {
-      type: "buildBetaNotifications",
-      relationships: {
-        build: {
-          data: {
-            type: "builds",
-            id: build5.id,
-          },
-        },
+    data: [
+      {
+        type: "betaGroups",
+        id: internalGroups[0].id,
       },
-    },
+    ],
   }),
 });
 
