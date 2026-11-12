@@ -4,7 +4,6 @@ const keyId = process.env.APP_STORE_CONNECT_KEY_ID;
 const issuerId = process.env.APP_STORE_CONNECT_ISSUER_ID;
 const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
-const buildVersion = "5";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
@@ -92,23 +91,41 @@ for (const group of internalGroups) {
   }));
 }
 
-const builds = await api(
-  `/v1/builds?filter[app]=${appId}&filter[version]=${buildVersion}&limit=10`,
-);
-if (builds.data?.length !== 1) {
-  throw new Error(
-    `Expected exactly one build ${buildVersion}, found ${builds.data?.length ?? 0}.`,
+for (const version of ["4", "5"]) {
+  const builds = await api(
+    `/v1/builds?filter[app]=${appId}&filter[version]=${version}&limit=10`,
   );
-}
+  if (builds.data?.length !== 1) {
+    throw new Error(
+      `Expected exactly one build ${version}, found ${builds.data?.length ?? 0}.`,
+    );
+  }
 
-const build = builds.data[0];
-const detail = await api(`/v1/builds/${build.id}/buildBetaDetail`);
-console.log(JSON.stringify({
-  buildId: build.id,
-  version: build.attributes?.version,
-  processingState: build.attributes?.processingState,
-  internalBuildState: detail.data?.attributes?.internalBuildState,
-  externalBuildState: detail.data?.attributes?.externalBuildState,
-  autoNotifyEnabled: detail.data?.attributes?.autoNotifyEnabled,
-  didNotify: detail.data?.attributes?.didNotify,
-}));
+  const build = builds.data[0];
+  const detail = await api(`/v1/builds/${build.id}/buildBetaDetail`);
+  const buildGroups = await api(`/v1/builds/${build.id}/betaGroups`);
+  const localizations = await api(
+    `/v1/builds/${build.id}/betaBuildLocalizations`,
+  );
+  const reviewSubmission = await api(
+    `/v1/builds/${build.id}/betaAppReviewSubmission`,
+  );
+  console.log(JSON.stringify({
+    buildId: build.id,
+    version: build.attributes?.version,
+    processingState: build.attributes?.processingState,
+    internalBuildState: detail.data?.attributes?.internalBuildState,
+    externalBuildState: detail.data?.attributes?.externalBuildState,
+    autoNotifyEnabled: detail.data?.attributes?.autoNotifyEnabled,
+    didNotify: detail.data?.attributes?.didNotify,
+    groups: (buildGroups.data ?? []).map((group) => ({
+      id: group.id,
+      name: group.attributes?.name,
+    })),
+    localizations: (localizations.data ?? []).map((item) => ({
+      locale: item.attributes?.locale,
+      whatsNew: item.attributes?.whatsNew,
+    })),
+    reviewSubmission: reviewSubmission.data?.attributes ?? null,
+  }));
+}
