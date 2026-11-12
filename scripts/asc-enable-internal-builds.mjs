@@ -134,6 +134,19 @@ if (!build5) {
   throw new Error("Build 5 was not found.");
 }
 
+await api(`/v1/buildBetaDetails/${build5.id}`, {
+  method: "PATCH",
+  body: JSON.stringify({
+    data: {
+      type: "buildBetaDetails",
+      id: build5.id,
+      attributes: {
+        autoNotifyEnabled: false,
+      },
+    },
+  }),
+});
+
 await api("/v1/buildBetaNotifications", {
   method: "POST",
   body: JSON.stringify({
