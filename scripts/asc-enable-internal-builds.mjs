@@ -185,21 +185,6 @@ if (!tester) {
   throw new Error("The internal tester account was not found.");
 }
 
-await api(
-  `/v1/betaGroups/${voiceFixGroup.id}/relationships/betaTesters`,
-  {
-    method: "POST",
-    body: JSON.stringify({
-      data: [
-        {
-          type: "betaTesters",
-          id: tester.id,
-        },
-      ],
-    }),
-  },
-);
-
 await api(`/v1/builds/${build5.id}/relationships/betaGroups`, {
   method: "POST",
   body: JSON.stringify({
@@ -242,6 +227,25 @@ if (!buildIsAvailable) {
   throw new Error("Build 5 did not become available to internal testers.");
 }
 
+await api(
+  `/v1/betaGroups/${voiceFixGroup.id}/relationships/betaTesters`,
+  {
+    method: "POST",
+    body: JSON.stringify({
+      data: [
+        {
+          type: "betaTesters",
+          id: tester.id,
+        },
+      ],
+    }),
+  },
+);
+
+const groupTesters = await api(
+  `/v1/betaGroups/${voiceFixGroup.id}/betaTesters?limit=50`,
+);
+
 console.log(JSON.stringify({
   voiceFixGroup: {
     id: voiceFixGroup.id,
@@ -251,6 +255,10 @@ console.log(JSON.stringify({
     id: tester.id,
     email: tester.attributes?.email,
   },
+  groupTesters: (groupTesters.data ?? []).map((item) => ({
+    id: item.id,
+    email: item.attributes?.email,
+  })),
   buildVersions: (updatedGroupBuilds.data ?? [])
     .map((item) => item.attributes?.version),
   build5State:
