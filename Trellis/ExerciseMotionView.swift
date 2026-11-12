@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 import UIKit
 
+@MainActor
 enum ExerciseMediaCatalog {
     private static let cache = NSCache<NSString, UIImage>()
 
