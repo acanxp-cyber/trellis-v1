@@ -103,7 +103,6 @@ for (const version of ["4", "5"]) {
 
   const build = builds.data[0];
   const detail = await api(`/v1/builds/${build.id}/buildBetaDetail`);
-  const buildGroups = await api(`/v1/builds/${build.id}/betaGroups`);
   const localizations = await api(
     `/v1/builds/${build.id}/betaBuildLocalizations`,
   );
@@ -118,10 +117,6 @@ for (const version of ["4", "5"]) {
     externalBuildState: detail.data?.attributes?.externalBuildState,
     autoNotifyEnabled: detail.data?.attributes?.autoNotifyEnabled,
     didNotify: detail.data?.attributes?.didNotify,
-    groups: (buildGroups.data ?? []).map((group) => ({
-      id: group.id,
-      name: group.attributes?.name,
-    })),
     localizations: (localizations.data ?? []).map((item) => ({
       locale: item.attributes?.locale,
       whatsNew: item.attributes?.whatsNew,
