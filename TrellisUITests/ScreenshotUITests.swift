@@ -77,6 +77,32 @@ final class ScreenshotUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
 
+    func testClearTodayKeepsCompletedAndUndoRestoresOpenTasks() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TRELLIS_UI_TEST"] = "1"
+        app.launch()
+
+        let openTask = app.staticTexts["把本周最重要的事做完"]
+        let completedTask = app.staticTexts["整理今天留下的记录"]
+        XCTAssertTrue(openTask.waitForExistence(timeout: 10))
+        XCTAssertTrue(completedTask.exists)
+
+        app.buttons["clear-today"].tap()
+        let clearButton = app.buttons["清零未完成计划"]
+        XCTAssertTrue(clearButton.waitForExistence(timeout: 5))
+        clearButton.tap()
+
+        XCTAssertTrue(openTask.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(completedTask.exists)
+
+        let undoButton = app.buttons["撤销"]
+        XCTAssertTrue(undoButton.waitForExistence(timeout: 5))
+        undoButton.tap()
+
+        XCTAssertTrue(openTask.waitForExistence(timeout: 5))
+        XCTAssertTrue(completedTask.exists)
+    }
+
     private func capture(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name

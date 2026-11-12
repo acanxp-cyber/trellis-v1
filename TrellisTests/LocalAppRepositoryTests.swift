@@ -94,16 +94,17 @@ final class LocalAppRepositoryTests: XCTestCase {
         XCTAssertEqual(attachment.recordID, recordID)
         XCTAssertEqual(attachment.kind, .photo)
         XCTAssertFalse(attachment.relativePath.hasPrefix("/"))
+        let savedURL = try await store.url(for: attachment)
         XCTAssertTrue(
             FileManager.default.fileExists(
-                atPath: try store.url(for: attachment).path
+                atPath: savedURL.path
             )
         )
 
         try await store.delete(attachment)
         XCTAssertFalse(
             FileManager.default.fileExists(
-                atPath: try store.url(for: attachment).path
+                atPath: savedURL.path
             )
         )
     }

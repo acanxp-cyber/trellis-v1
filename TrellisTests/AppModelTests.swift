@@ -127,13 +127,12 @@ final class AppModelTests: XCTestCase {
                 scheduledAt: now.addingTimeInterval(86_400)
             ),
         ]
-        await repository.save(data)
+        try await repository.save(data)
         let model = AppModel(repository: repository)
         await model.bootstrap()
 
-        let receipt = try XCTUnwrap(
-            await model.clearUnfinishedTasksToday(now: now)
-        )
+        let clearedPlan = await model.clearUnfinishedTasksToday(now: now)
+        let receipt = try XCTUnwrap(clearedPlan)
 
         XCTAssertEqual(receipt.tasks.map(\.id), [todayOpenID])
         XCTAssertEqual(
@@ -168,6 +167,28 @@ final class AppModelTests: XCTestCase {
 
         XCTAssertTrue(didSave)
         XCTAssertEqual(model.data.records.first?.id, recordID)
+        XCTAssertEqual(model.data.records.first?.attachments, [attachment])
+    }
+
+    func testRecordCanContainOnlyLocalMedia() async throws {
+        let repository = InMemoryRepository()
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+        let recordID = UUID()
+        let attachment = RecordAttachment(
+            recordID: recordID,
+            kind: .drawing,
+            relativePath: "\(recordID.uuidString)/drawing.png"
+        )
+
+        let didSave = await model.addRecord(
+            text: "   ",
+            recordID: recordID,
+            attachments: [attachment]
+        )
+
+        XCTAssertTrue(didSave)
+        XCTAssertEqual(model.data.records.first?.text, "")
         XCTAssertEqual(model.data.records.first?.attachments, [attachment])
     }
 }

@@ -6,6 +6,7 @@ import UIKit
 struct RecordAttachmentStrip: View {
     let attachments: [RecordAttachment]
     let store: RecordMediaStore?
+    var onDelete: ((RecordAttachment) -> Void)? = nil
 
     var body: some View {
         if !attachments.isEmpty, let store {
@@ -14,7 +15,10 @@ struct RecordAttachmentStrip: View {
                     ForEach(attachments) { attachment in
                         RecordAttachmentView(
                             attachment: attachment,
-                            store: store
+                            store: store,
+                            onDelete: onDelete.map { delete in
+                                { delete(attachment) }
+                            }
                         )
                     }
                 }
@@ -26,6 +30,7 @@ struct RecordAttachmentStrip: View {
 struct RecordAttachmentView: View {
     let attachment: RecordAttachment
     let store: RecordMediaStore
+    var onDelete: (() -> Void)? = nil
 
     @State private var image: UIImage?
     @State private var videoURL: URL?
@@ -59,6 +64,21 @@ struct RecordAttachmentView: View {
                     attachment: attachment,
                     store: store
                 )
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.trellisBone)
+                        .frame(width: 26, height: 26)
+                        .background(Color.black.opacity(0.72))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(5)
+                .accessibilityLabel("移除附件")
             }
         }
         .task(id: attachment.id) {

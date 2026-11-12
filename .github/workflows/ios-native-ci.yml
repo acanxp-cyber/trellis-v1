@@ -64,7 +64,7 @@ jobs:
             -only-testing:TrellisTests \
             test
 
-      - name: Run voice permission crash regression
+      - name: Run simulator regression tests
         run: |
           device_id="$(xcrun simctl list devices available -j |
             jq -r '.devices[][] | select(.name | startswith("iPhone")) | .udid' |
@@ -77,6 +77,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:TrellisUITests/ScreenshotUITests/testVoiceCaptureTapDoesNotTerminateApp \
+            -only-testing:TrellisUITests/ScreenshotUITests/testClearTodayKeepsCompletedAndUndoRestoresOpenTasks \
             test
 
 

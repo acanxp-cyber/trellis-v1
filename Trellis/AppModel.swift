@@ -155,7 +155,7 @@ final class AppModel {
         attachments: [RecordAttachment]
     ) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard !trimmed.isEmpty || !attachments.isEmpty else {
             return false
         }
 

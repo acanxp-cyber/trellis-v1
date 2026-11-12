@@ -137,7 +137,8 @@ struct RecordsView: View {
             if let mediaStore {
                 RecordAttachmentStrip(
                     attachments: attachments,
-                    store: mediaStore
+                    store: mediaStore,
+                    onDelete: removeAttachment
                 )
             }
 
@@ -373,6 +374,16 @@ struct RecordsView: View {
                 selectedPhotos = []
                 draftRecordID = UUID()
             }
+        }
+    }
+
+    private func removeAttachment(_ attachment: RecordAttachment) {
+        attachments.removeAll { $0.id == attachment.id }
+        guard let mediaStore else {
+            return
+        }
+        Task {
+            try? await mediaStore.delete(attachment)
         }
     }
 
