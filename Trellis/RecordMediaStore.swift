@@ -22,14 +22,11 @@ enum RecordMediaStoreError: LocalizedError {
 
 actor RecordMediaStore {
     private let baseDirectory: URL
-    private let fileManager: FileManager
+    private let fileManager = FileManager.default
 
-    init(
-        baseDirectory: URL,
-        fileManager: FileManager = .default
-    ) throws {
+    init(baseDirectory: URL) throws {
         self.baseDirectory = baseDirectory.standardizedFileURL
-        self.fileManager = fileManager
+        let fileManager = FileManager.default
         do {
             try fileManager.createDirectory(
                 at: baseDirectory,
@@ -56,10 +53,7 @@ actor RecordMediaStore {
         let directory = base
             .appendingPathComponent("Trellis", isDirectory: true)
             .appendingPathComponent("RecordMedia", isDirectory: true)
-        return try RecordMediaStore(
-            baseDirectory: directory,
-            fileManager: fileManager
-        )
+        return try RecordMediaStore(baseDirectory: directory)
     }
 
     func save(
