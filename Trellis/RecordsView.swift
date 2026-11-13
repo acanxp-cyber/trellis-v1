@@ -30,9 +30,6 @@ struct RecordsView: View {
                 .padding(22)
             }
             .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .bottom, spacing: 8) {
-                recordInputBar
-            }
             .background(Color.trellisInk.ignoresSafeArea())
             .navigationTitle("记录")
             .toolbar {
@@ -136,6 +133,9 @@ struct RecordsView: View {
                 cleanupUnsavedMedia()
                 audioPlayer.stop()
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            recordInputBar
         }
     }
 
