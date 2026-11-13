@@ -27,30 +27,6 @@ struct RecordStudioActionDescriptor: Identifiable, Equatable, Sendable {
 enum RecordStudioActionCatalog {
     static let all: [RecordStudioActionDescriptor] = [
         .init(
-            id: .drawing,
-            title: "手绘涂鸦",
-            detail: "PencilKit 自由画布",
-            systemImage: "pencil.tip.crop.circle"
-        ),
-        .init(
-            id: .pixelArt,
-            title: "像素画布",
-            detail: "16×16 网格与橡皮",
-            systemImage: "square.grid.3x3.fill"
-        ),
-        .init(
-            id: .stickers,
-            title: "手作贴纸",
-            detail: "拖动、缩放和旋转",
-            systemImage: "face.smiling"
-        ),
-        .init(
-            id: .englishReading,
-            title: "英语朗读",
-            detail: "100 篇随机短文与录音",
-            systemImage: "text.book.closed.fill"
-        ),
-        .init(
             id: .camera,
             title: "拍照",
             detail: "用相机留下此刻",
@@ -73,6 +49,30 @@ enum RecordStudioActionCatalog {
             title: "语音记录",
             detail: "录下声音并反复回放",
             systemImage: "waveform"
+        ),
+        .init(
+            id: .drawing,
+            title: "手绘涂鸦",
+            detail: "黑板、粉笔与书法笔",
+            systemImage: "pencil.tip.crop.circle"
+        ),
+        .init(
+            id: .englishReading,
+            title: "英语朗读",
+            detail: "100 篇随机短文与录音",
+            systemImage: "text.book.closed.fill"
+        ),
+        .init(
+            id: .pixelArt,
+            title: "像素画布",
+            detail: "大小网格与多尺寸笔刷",
+            systemImage: "square.grid.3x3.fill"
+        ),
+        .init(
+            id: .stickers,
+            title: "手作贴纸",
+            detail: "拖动、缩放和旋转",
+            systemImage: "face.smiling"
         ),
     ]
 

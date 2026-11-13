@@ -3,61 +3,174 @@ import Observation
 import SwiftUI
 import UIKit
 
+enum PencilBrushPreset: String, CaseIterable, Identifiable, Sendable {
+    case chalk
+    case calligraphy
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .chalk:
+            return "粉笔"
+        case .calligraphy:
+            return "书法"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .chalk:
+            return "pencil.and.scribble"
+        case .calligraphy:
+            return "pencil.tip"
+        }
+    }
+
+    var inkType: PKInkingTool.InkType {
+        switch self {
+        case .chalk:
+            return .crayon
+        case .calligraphy:
+            return .fountainPen
+        }
+    }
+
+    var width: CGFloat {
+        switch self {
+        case .chalk:
+            return 10
+        case .calligraphy:
+            return 6
+        }
+    }
+}
+
 struct PencilDrawingEditor: View {
     let onSave: (Data) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var drawing = PKDrawing()
     @State private var controller = PencilCanvasController()
+    @State private var selectedBrush: PencilBrushPreset = .chalk
+
+    private let boardColor = Color(
+        red: 0.035,
+        green: 0.055,
+        blue: 0.045
+    )
 
     var body: some View {
         NavigationStack {
-            PencilCanvas(
-                drawing: $drawing,
-                controller: controller
-            )
-                .background(Color.white)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("手绘涂鸦")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("取消") {
+            VStack(spacing: 0) {
+                brushPicker
+                PencilCanvas(
+                    drawing: $drawing,
+                    controller: controller
+                )
+                .aspectRatio(1, contentMode: .fit)
+                .padding(12)
+            }
+            .background(boardColor)
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("黑板手绘")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        if let data = renderPNG() {
+                            onSave(data)
                             dismiss()
                         }
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("添加") {
-                            let image = drawing.image(
-                                from: drawing.bounds,
-                                scale: UIScreen.main.scale
-                            )
-                            if let data = image.pngData() {
-                                onSave(data)
-                                dismiss()
-                            }
-                        }
-                        .disabled(drawing.strokes.isEmpty)
-                    }
-                    ToolbarItemGroup(placement: .bottomBar) {
-                        Button("撤销") {
-                            controller.undo()
-                        }
-                        .disabled(!controller.canUndo)
-
-                        Button("重做") {
-                            controller.redo()
-                        }
-                        .disabled(!controller.canRedo)
-
-                        Spacer()
-
-                        Button("清空", role: .destructive) {
-                            controller.clear()
-                        }
-                        .disabled(drawing.strokes.isEmpty)
-                    }
+                    .disabled(drawing.strokes.isEmpty)
                 }
+                ToolbarItemGroup(placement: .bottomBar) {
+                    Button("撤销") {
+                        controller.undo()
+                    }
+                    .disabled(!controller.canUndo)
+
+                    Button("重做") {
+                        controller.redo()
+                    }
+                    .disabled(!controller.canRedo)
+
+                    Spacer()
+
+                    Button("清空", role: .destructive) {
+                        controller.clear()
+                    }
+                    .disabled(drawing.strokes.isEmpty)
+                }
+            }
         }
+    }
+
+    private var brushPicker: some View {
+        HStack(spacing: 10) {
+            ForEach(PencilBrushPreset.allCases) { preset in
+                Button {
+                    selectedBrush = preset
+                    controller.setBrush(preset)
+                } label: {
+                    Label(preset.title, systemImage: preset.systemImage)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            selectedBrush == preset
+                                ? Color.white.opacity(0.22)
+                                : Color.white.opacity(0.08)
+                        )
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            Text("黑板")
+                .font(.caption)
+                .foregroundStyle(Color.white.opacity(0.55))
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+    }
+
+    private func renderPNG() -> Data? {
+        let measuredSize = controller.canvasSize
+            ?? CGSize(width: 1024, height: 1024)
+        let logicalSize = measuredSize.width > 0
+            && measuredSize.height > 0
+            ? measuredSize
+            : CGSize(width: 1024, height: 1024)
+        let outputSize = CGSize(width: 1024, height: 1024)
+        let scale = max(
+            outputSize.width / max(logicalSize.width, 1),
+            outputSize.height / max(logicalSize.height, 1)
+        )
+        let drawingImage = drawing.image(
+            from: CGRect(origin: .zero, size: logicalSize),
+            scale: scale
+        )
+        let renderer = UIGraphicsImageRenderer(size: outputSize)
+        let image = renderer.image { context in
+            UIColor(
+                red: 0.035,
+                green: 0.055,
+                blue: 0.045,
+                alpha: 1
+            ).setFill()
+            context.fill(CGRect(origin: .zero, size: outputSize))
+            drawingImage.draw(in: CGRect(origin: .zero, size: outputSize))
+        }
+        return image.pngData()
     }
 }
 
@@ -75,7 +188,17 @@ private struct PencilCanvas: UIViewRepresentable {
     func makeUIView(context: Context) -> PKCanvasView {
         let canvas = PKCanvasView()
         canvas.drawingPolicy = .anyInput
-        canvas.backgroundColor = .white
+        canvas.backgroundColor = UIColor(
+            red: 0.035,
+            green: 0.055,
+            blue: 0.045,
+            alpha: 1
+        )
+        canvas.tool = PKInkingTool(
+            .crayon,
+            color: .white,
+            width: 10
+        )
         canvas.delegate = context.coordinator
         canvas.drawing = drawing
         controller.attach(canvas)
@@ -123,6 +246,9 @@ final class PencilCanvasController {
     private weak var canvas: PKCanvasView?
     private(set) var canUndo = false
     private(set) var canRedo = false
+    var canvasSize: CGSize? {
+        canvas?.bounds.size
+    }
 
     func attach(_ canvas: PKCanvasView) {
         self.canvas = canvas
@@ -157,6 +283,14 @@ final class PencilCanvasController {
         canvas.drawing = PKDrawing()
         refresh()
     }
+
+    func setBrush(_ preset: PencilBrushPreset) {
+        canvas?.tool = PKInkingTool(
+            preset.inkType,
+            color: .white,
+            width: preset.width
+        )
+    }
 }
 
 struct PixelSketchEditor: View {
@@ -180,10 +314,12 @@ struct PixelSketchEditor: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 18) {
+                pixelControls
+
                 GeometryReader { proxy in
                     let side = min(proxy.size.width, proxy.size.height)
                     Canvas { context, _ in
-                        let gridSize = PixelCanvasState.gridSize
+                        let gridSize = canvas.gridSize
                         let pixelSize = side / CGFloat(gridSize)
                         for index in canvas.pixels.indices {
                             let row = index / gridSize
@@ -320,13 +456,48 @@ struct PixelSketchEditor: View {
         return index
     }
 
+    private var pixelControls: some View {
+        HStack(spacing: 10) {
+            Menu {
+                ForEach(PixelCanvasState.allowedGridSizes, id: \.self) { size in
+                    Button("\(size)×\(size)") {
+                        canvas.setGridSize(size)
+                    }
+                }
+            } label: {
+                Label(
+                    "网格 \(canvas.gridSize)×\(canvas.gridSize)",
+                    systemImage: "square.grid.3x3"
+                )
+                .font(.caption.weight(.semibold))
+            }
+
+            Menu {
+                ForEach(1...3, id: \.self) { size in
+                    Button("\(size)×\(size) 像素") {
+                        canvas.setBrushSize(size)
+                    }
+                }
+            } label: {
+                Label(
+                    "笔刷 \(canvas.brushSize)×\(canvas.brushSize)",
+                    systemImage: "paintbrush.pointed.fill"
+                )
+                .font(.caption.weight(.semibold))
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+
     private func paint(at point: CGPoint, side: CGFloat) {
         guard point.x >= 0, point.y >= 0,
               point.x < side, point.y < side
         else {
             return
         }
-        let gridSize = PixelCanvasState.gridSize
+        let gridSize = canvas.gridSize
         let column = min(
             gridSize - 1,
             max(0, Int(point.x / side * CGFloat(gridSize)))
@@ -354,7 +525,7 @@ struct PixelSketchEditor: View {
         let image = renderer.image { context in
             UIColor.white.setFill()
             context.fill(CGRect(origin: .zero, size: size))
-            let gridSize = PixelCanvasState.gridSize
+            let gridSize = canvas.gridSize
             let pixelSize = size.width / CGFloat(gridSize)
             for index in canvas.pixels.indices {
                 let colorIndex = canvas.pixels[index]

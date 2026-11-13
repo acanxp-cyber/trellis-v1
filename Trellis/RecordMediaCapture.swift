@@ -221,6 +221,10 @@ final class VoiceMemoRecorder {
             try? FileManager.default.removeItem(at: fileURL)
         }
         fileURL = nil
+        try? AVAudioSession.sharedInstance().setActive(
+            false,
+            options: .notifyOthersOnDeactivation
+        )
     }
 }
 

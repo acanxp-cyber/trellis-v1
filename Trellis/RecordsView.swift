@@ -4,6 +4,7 @@ import SwiftUI
 struct RecordsView: View {
     @Environment(AppModel.self) private var model
     @Environment(LocalAudioPlayer.self) private var audioPlayer
+    @FocusState private var isDraftFocused: Bool
     @State private var draft = ""
     @State private var attachments: [RecordAttachment] = []
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -28,8 +29,27 @@ struct RecordsView: View {
                 }
                 .padding(22)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 8) {
+                recordInputBar
+            }
             .background(Color.trellisInk.ignoresSafeArea())
             .navigationTitle("记录")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Button("完成") {
+                        isDraftFocused = false
+                    }
+
+                    Spacer()
+
+                    Button(isSaving ? "保存中" : "存为记录") {
+                        isDraftFocused = false
+                        saveRecord()
+                    }
+                    .disabled(saveDisabled)
+                }
+            }
             .onChange(of: selectedPhotos) { _, items in
                 Task {
                     await importPhotoItems(items)
@@ -125,21 +145,6 @@ struct RecordsView: View {
                 .font(.system(.title3, design: .serif))
                 .foregroundStyle(Color.trellisBone)
 
-            TextField(
-                "写一句就够，也可以只放照片、视频或涂鸦。",
-                text: $draft,
-                axis: .vertical
-            )
-            .lineLimit(3...7)
-            .textFieldStyle(.plain)
-            .padding(14)
-            .background(Color.black.opacity(0.18))
-            .overlay {
-                RoundedRectangle(cornerRadius: 2)
-                    .stroke(Color.white.opacity(0.1))
-            }
-            .accessibilityLabel("记录内容")
-
             if let mediaStore {
                 RecordAttachmentStrip(
                     attachments: attachments,
@@ -147,8 +152,6 @@ struct RecordsView: View {
                     onDelete: removeAttachment
                 )
             }
-
-            actionGrid
 
             Button {
                 saveRecord()
@@ -159,16 +162,55 @@ struct RecordsView: View {
             .buttonStyle(.borderedProminent)
             .tint(.trellisBrass)
             .disabled(
-                (
-                    draft.trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    ).isEmpty
-                        && attachments.isEmpty
-                )
-                    || isSaving
+                saveDisabled
             )
+
+            actionGrid
         }
         .trellisCard()
+    }
+
+    private var recordInputBar: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+
+            HStack(alignment: .bottom, spacing: 10) {
+                TextField(
+                    "写下此刻，键盘上方可直接存为记录。",
+                    text: $draft,
+                    axis: .vertical
+                )
+                .focused($isDraftFocused)
+                .lineLimit(1...4)
+                .textFieldStyle(.plain)
+                .padding(.vertical, 9)
+                .accessibilityLabel("记录内容")
+
+                if isDraftFocused {
+                    Button("完成") {
+                        isDraftFocused = false
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.trellisBrass)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+        .background(.ultraThinMaterial)
+        .background(Color.trellisInk.opacity(0.92))
+    }
+
+    private var saveDisabled: Bool {
+        (
+            draft.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ).isEmpty
+                && attachments.isEmpty
+        )
+            || isSaving
     }
 
     private var actionGrid: some View {
@@ -378,6 +420,7 @@ struct RecordsView: View {
                 attachments = []
                 selectedPhotos = []
                 draftRecordID = UUID()
+                isDraftFocused = false
             }
         }
     }

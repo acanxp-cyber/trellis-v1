@@ -85,4 +85,49 @@ final class RecordStudioTests: XCTestCase {
         XCTAssertTrue(text.hasPrefix("提醒："))
         XCTAssertLessThanOrEqual(text.count, 42)
     }
+
+    func testRecordStudioUsesRequestedActionOrder() {
+        XCTAssertEqual(
+            RecordStudioActionCatalog.all.map(\.id),
+            [
+                .camera,
+                .video,
+                .library,
+                .voice,
+                .drawing,
+                .englishReading,
+                .pixelArt,
+                .stickers,
+            ]
+        )
+    }
+
+    func testPixelCanvasResizesWithNearestNeighbor() {
+        var state = PixelCanvasState()
+        state.selectColor(2)
+        state.paint(column: 15, row: 15)
+
+        state.setGridSize(8)
+
+        XCTAssertEqual(state.gridSize, 8)
+        XCTAssertEqual(state.colorIndex(column: 7, row: 7), 2)
+    }
+
+    func testPixelBrushCanPaintLargerBlocks() {
+        var state = PixelCanvasState()
+        state.selectColor(3)
+        state.setBrushSize(3)
+        state.paint(column: 2, row: 2)
+
+        XCTAssertEqual(state.colorIndex(column: 2, row: 2), 3)
+        XCTAssertEqual(state.colorIndex(column: 4, row: 4), 3)
+        XCTAssertEqual(state.colorIndex(column: 5, row: 5), -1)
+    }
+
+    func testPencilPresetsIncludeChalkAndCalligraphy() {
+        XCTAssertEqual(
+            PencilBrushPreset.allCases.map(\.title),
+            ["粉笔", "书法"]
+        )
+    }
 }

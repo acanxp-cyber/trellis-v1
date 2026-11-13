@@ -7,11 +7,11 @@ struct EnglishReadingPracticeView: View {
     @State private var passages: [EnglishReadingPassage] = []
     @State private var deck: ReadingPassageDeck?
     @State private var showsChinese = false
-    @State private var showsRecorder = false
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var savedMessage: String?
     @State private var mediaStore = try? RecordMediaStore.makeDefault()
+    @State private var recorder = VoiceMemoRecorder()
 
     var body: some View {
         NavigationStack {
@@ -40,6 +40,9 @@ struct EnglishReadingPracticeView: View {
                 }
                 .padding(22)
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                readingRecorderBar
+            }
             .background(Color.trellisInk.ignoresSafeArea())
             .navigationTitle("英语朗读")
             .navigationBarTitleDisplayMode(.inline)
@@ -53,12 +56,8 @@ struct EnglishReadingPracticeView: View {
             .task {
                 loadPassages()
             }
-            .sheet(isPresented: $showsRecorder) {
-                VoiceMemoSheet { media in
-                    Task {
-                        await saveAttempt(media)
-                    }
-                }
+            .onDisappear {
+                recorder.cancel()
             }
         }
     }
@@ -154,20 +153,83 @@ struct EnglishReadingPracticeView: View {
                 Spacer()
             }
 
-            Button {
-                showsRecorder = true
-            } label: {
-                Label(
-                    isSaving ? "保存中" : "录下我的朗读",
-                    systemImage: "mic.fill"
-                )
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.trellisBrass)
-            .disabled(isSaving || mediaStore == nil)
         }
         .trellisCard()
+    }
+
+    private var readingRecorderBar: some View {
+        VStack(spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(recorder.isRecording ? "正在朗读" : "录下我的朗读")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(Color.trellisBone)
+
+                    Text(
+                        recorder.isRecording
+                            ? durationText(recorder.elapsedSeconds)
+                            : "录音时英文原文保持可见"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(Color.trellisAsh)
+                }
+
+                Spacer()
+
+                Button {
+                    Task {
+                        if recorder.isRecording {
+                            if let media = recorder.stop() {
+                                await saveAttempt(media)
+                            }
+                        } else {
+                            _ = await recorder.start()
+                        }
+                    }
+                } label: {
+                    Label(
+                        recorder.isRecording
+                            ? "停止并保存"
+                            : "开始朗读",
+                        systemImage: recorder.isRecording
+                            ? "stop.fill"
+                            : "mic.fill"
+                    )
+                    .font(.callout.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(
+                    recorder.isRecording
+                        ? Color.trellisDanger
+                        : Color.trellisBrass
+                )
+                .disabled(isSaving || mediaStore == nil)
+            }
+
+            if let message = recorder.errorMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(Color.trellisDanger)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .background(Color.trellisInk.opacity(0.94))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+        }
+    }
+
+    private func durationText(_ seconds: Int) -> String {
+        String(
+            format: "%02d:%02d",
+            seconds / 60,
+            seconds % 60
+        )
     }
 
     private func loadPassages() {
