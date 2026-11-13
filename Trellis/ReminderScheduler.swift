@@ -56,6 +56,7 @@ struct ReminderScheduleResult: Equatable, Sendable {
 final class LocalReminderScheduler {
     private let center = UNUserNotificationCenter.current()
     private let planner = ReminderPlanner()
+    private let spokenSounds = try? SpokenAlarmSoundStore.makeDefault()
 
     func schedule(_ tasks: [GrowthTask], now: Date = .now) async -> ReminderScheduleResult {
         let plans = planner.plans(for: tasks, now: now)
@@ -82,15 +83,25 @@ final class LocalReminderScheduler {
         var failedCount = 0
         for plan in plans {
             do {
+                let soundName = try? await spokenSounds?.soundName(
+                    for: plan.taskID,
+                    title: plan.title
+                )
                 switch channel {
                 case .alarmKit:
                     if #available(iOS 26.0, *) {
-                        try await scheduleAlarm(plan)
+                        try await scheduleAlarm(
+                            plan,
+                            soundName: soundName
+                        )
                     } else {
                         throw ReminderSchedulingError.alarmKitUnavailable
                     }
                 case .notification:
-                    try await scheduleNotification(plan)
+                    try await scheduleNotification(
+                        plan,
+                        soundName: soundName
+                    )
                 case .unavailable:
                     break
                 }
@@ -124,6 +135,9 @@ final class LocalReminderScheduler {
                 try? AlarmManager.shared.cancel(id: taskID)
             }
         }
+        for taskID in taskIDs {
+            spokenSounds?.removeSound(taskID: taskID)
+        }
     }
 
     private func requestAuthorization() async -> ReminderChannel {
@@ -155,7 +169,10 @@ final class LocalReminderScheduler {
     }
 
     @available(iOS 26.0, *)
-    private func scheduleAlarm(_ plan: ReminderPlan) async throws {
+    private func scheduleAlarm(
+        _ plan: ReminderPlan,
+        soundName: String?
+    ) async throws {
         try? AlarmManager.shared.cancel(id: plan.taskID)
 
         let title = LocalizedStringResource(stringLiteral: plan.title)
@@ -197,7 +214,9 @@ final class LocalReminderScheduler {
             countdownDuration: countdown,
             schedule: .fixed(plan.fireDate),
             attributes: attributes,
-            sound: .default
+            sound: soundName.map {
+                .named($0)
+            } ?? .default
         )
 
         _ = try await AlarmManager.shared.schedule(
@@ -206,11 +225,18 @@ final class LocalReminderScheduler {
         )
     }
 
-    private func scheduleNotification(_ plan: ReminderPlan) async throws {
+    private func scheduleNotification(
+        _ plan: ReminderPlan,
+        soundName: String?
+    ) async throws {
         let content = UNMutableNotificationContent()
         content.title = "日程提醒"
         content.body = plan.title
-        content.sound = .default
+        content.sound = soundName.map {
+            UNNotificationSound(
+                named: UNNotificationSoundName(rawValue: $0)
+            )
+        } ?? .default
         content.threadIdentifier = "task-reminders"
 
         let components = Calendar.trellis.dateComponents(

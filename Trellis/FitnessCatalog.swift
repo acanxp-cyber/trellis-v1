@@ -154,6 +154,40 @@ struct FitnessRoutineRecommendation: Identifiable, Hashable, Sendable {
     }
 }
 
+struct FitnessRoutineTiming: Equatable, Sendable {
+    let warmupSeconds: Int
+    let mainSeconds: Int
+    let cooldownSeconds: Int
+
+    var totalSeconds: Int {
+        warmupSeconds + mainSeconds + cooldownSeconds
+    }
+}
+
+enum FitnessRoutineTimingPolicy {
+    static func allocate(
+        totalMinutes: Int,
+        focus: FitnessFocus
+    ) -> FitnessRoutineTiming {
+        let totalSeconds = max(totalMinutes, 1) * 60
+        if focus == .mobility {
+            let cooldown = min(30, totalSeconds / 6)
+            return FitnessRoutineTiming(
+                warmupSeconds: 0,
+                mainSeconds: totalSeconds - cooldown,
+                cooldownSeconds: cooldown
+            )
+        }
+
+        let transition = min(60, max(20, totalSeconds / 10))
+        return FitnessRoutineTiming(
+            warmupSeconds: transition,
+            mainSeconds: totalSeconds - transition * 2,
+            cooldownSeconds: transition
+        )
+    }
+}
+
 enum FitnessCatalog {
     static let exercises: [FitnessExercise] = [
         FitnessExercise(title: "扶墙俯卧撑", focus: .upper, level: .beginner, targets: "胸、肩、肱三头肌", prescription: "2 组 × 10–15 次", method: "双手扶墙略宽于肩，身体保持直线，屈肘靠近墙面后推回。", adjustment: "越靠近墙越轻松。"),
@@ -280,12 +314,12 @@ enum FitnessIntentParser {
             focusExercises.dropFirst(strengthStart).prefix(4)
         )
         let mobility = FitnessCatalog.exercises(for: .mobility)
-        let warmupExercises = Array(mobility.prefix(2))
-        let cooldownExercises = Array(mobility.suffix(2))
+        let warmupExercises = Array(mobility.prefix(1))
+        let cooldownExercises = Array(mobility.suffix(1))
 
         let warmup = FitnessRoutineBlock(
-            title: "热身 · 3 分钟",
-            detail: "先让关节进入活动范围，再开始力量部分。",
+            title: "热身 · 1 分钟",
+            detail: "只做一组快速活动，把身体带进训练状态。",
             items: warmupExercises.map {
                 FitnessRoutineItem(
                     exercise: $0,
@@ -294,7 +328,7 @@ enum FitnessIntentParser {
             }
         )
         let strength = FitnessRoutineBlock(
-            title: "主训练 · 12 分钟",
+            title: "主训练 · 18 分钟",
             detail: "动作之间休息 30–45 秒；保持可控节奏，每组留 2 次余力。",
             items: strengthExercises.map {
                 FitnessRoutineItem(
@@ -304,8 +338,8 @@ enum FitnessIntentParser {
             }
         )
         let cooldown = FitnessRoutineBlock(
-            title: "收尾 · 5 分钟",
-            detail: "呼吸恢复平稳后再结束。",
+            title: "收尾 · 1 分钟",
+            detail: "只做一组轻缓拉伸，呼吸平稳即可结束。",
             items: cooldownExercises.map {
                 FitnessRoutineItem(
                     exercise: $0,
@@ -342,7 +376,7 @@ enum FitnessIntentParser {
             $0.exercise.id != matchedExercise.id
         }
         let mainBlock = FitnessRoutineBlock(
-            title: "主训练 · 12 分钟",
+            title: "主训练 · 18 分钟",
             detail: "已围绕“\(matchedExercise.title)”安排相关动作；组间休息 30–45 秒。",
             items: [matchedItem] + relatedItems
         )
@@ -399,20 +433,24 @@ enum FitnessIntentParser {
             mainItems[0].prescriptionOverride = doseSummary
         }
 
-        let warmupMinutes: Int?
-        let mainMinutes: Int?
-        let cooldownMinutes: Int?
-        if let requestedDuration {
-            warmupMinutes = max(1, Int((Double(requestedDuration) * 0.2).rounded()))
-            cooldownMinutes = max(1, Int((Double(requestedDuration) * 0.2).rounded()))
-            mainMinutes = max(
-                1,
-                requestedDuration - warmupMinutes! - cooldownMinutes!
+        let timing = requestedDuration.map {
+            FitnessRoutineTimingPolicy.allocate(
+                totalMinutes: $0,
+                focus: request.focus
             )
+        }
+
+        let warmupLabel: String
+        let mainLabel: String
+        let cooldownLabel: String
+        if let timing {
+            warmupLabel = durationLabel(timing.warmupSeconds)
+            mainLabel = durationLabel(timing.mainSeconds)
+            cooldownLabel = durationLabel(timing.cooldownSeconds)
         } else {
-            warmupMinutes = nil
-            mainMinutes = nil
-            cooldownMinutes = nil
+            warmupLabel = "1 分钟"
+            mainLabel = "18 分钟"
+            cooldownLabel = "1 分钟"
         }
 
         let warmupItemCount = requestedDuration == nil
@@ -422,26 +460,36 @@ enum FitnessIntentParser {
             ? base.blocks[2].items.count
             : 1
         let warmupBlock = FitnessRoutineBlock(
-            title: warmupMinutes.map { "热身 · \($0) 分钟" } ?? "热身",
+            title: "热身 · \(warmupLabel)",
             detail: base.blocks[0].detail,
             items: Array(base.blocks[0].items.prefix(warmupItemCount))
         )
         let mainBlock = FitnessRoutineBlock(
-            title: mainMinutes.map { "主训练 · \($0) 分钟" }
-                ?? (doseSummary.map { "主训练 · \($0)" } ?? "主训练"),
+            title: requestedDuration == nil
+                ? (doseSummary.map { "主训练 · \($0)" } ?? "主训练")
+                : "主训练 · \(mainLabel)",
             detail: request.matchedExerciseTitle.map {
                 "主动作：\($0)，严格保留你指定的组数和次数。"
             } ?? base.blocks[1].detail,
             items: mainItems
         )
         let cooldownBlock = FitnessRoutineBlock(
-            title: cooldownMinutes.map { "收尾 · \($0) 分钟" } ?? "收尾",
+            title: "收尾 · \(cooldownLabel)",
             detail: base.blocks[2].detail,
             items: Array(base.blocks[2].items.prefix(cooldownItemCount))
         )
         let activityTitle = request.equipment.map {
             "\($0)\(request.focus.title)训练"
         } ?? request.focus.title
+
+        var blocks: [FitnessRoutineBlock] = []
+        if timing?.warmupSeconds ?? 60 > 0 {
+            blocks.append(warmupBlock)
+        }
+        blocks.append(mainBlock)
+        if timing?.cooldownSeconds ?? 60 > 0 {
+            blocks.append(cooldownBlock)
+        }
 
         return FitnessRoutineRecommendation(
             focus: request.focus,
@@ -456,10 +504,21 @@ enum FitnessIntentParser {
                 request.activityKind.rawValue,
                 request.focus.subtitle,
             ].joined(separator: " · "),
-            blocks: [warmupBlock, mainBlock, cooldownBlock],
+            blocks: blocks,
             safetyNote: base.safetyNote,
             matchedExerciseTitle: request.matchedExerciseTitle
         )
+    }
+
+    private static func durationLabel(_ seconds: Int) -> String {
+        if seconds < 60 {
+            return "\(seconds) 秒"
+        }
+        let minutes = seconds / 60
+        let remaining = seconds % 60
+        return remaining == 0
+            ? "\(minutes) 分钟"
+            : "\(minutes) 分 \(remaining) 秒"
     }
 
     static func suggestedStart(

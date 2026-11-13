@@ -71,17 +71,20 @@ struct QuickRecord: Identifiable, Codable, Sendable, Equatable {
     var text: String
     var createdAt: Date
     var attachments: [RecordAttachment]
+    var readingPassageID: String?
 
     init(
         id: UUID = UUID(),
         text: String,
         createdAt: Date = .now,
-        attachments: [RecordAttachment] = []
+        attachments: [RecordAttachment] = [],
+        readingPassageID: String? = nil
     ) {
         self.id = id
         self.text = text
         self.createdAt = createdAt
         self.attachments = attachments
+        self.readingPassageID = readingPassageID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -89,6 +92,7 @@ struct QuickRecord: Identifiable, Codable, Sendable, Equatable {
         case text
         case createdAt
         case attachments
+        case readingPassageID
     }
 
     init(from decoder: Decoder) throws {
@@ -100,6 +104,10 @@ struct QuickRecord: Identifiable, Codable, Sendable, Equatable {
             [RecordAttachment].self,
             forKey: .attachments
         ) ?? []
+        readingPassageID = try container.decodeIfPresent(
+            String.self,
+            forKey: .readingPassageID
+        )
     }
 }
 
@@ -152,7 +160,7 @@ struct WeeklyReview: Identifiable, Codable, Sendable, Equatable {
 }
 
 struct AppData: Codable, Sendable, Equatable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var tasks: [GrowthTask]

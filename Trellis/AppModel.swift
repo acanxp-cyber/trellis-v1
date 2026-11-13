@@ -152,7 +152,8 @@ final class AppModel {
     func addRecord(
         text: String,
         recordID: UUID,
-        attachments: [RecordAttachment]
+        attachments: [RecordAttachment],
+        readingPassageID: String? = nil
     ) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !attachments.isEmpty else {
@@ -164,7 +165,8 @@ final class AppModel {
             QuickRecord(
                 id: recordID,
                 text: trimmed,
-                attachments: attachments
+                attachments: attachments,
+                readingPassageID: readingPassageID
             )
         )
         return await commit(next)

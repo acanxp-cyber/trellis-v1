@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RecordsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(LocalAudioPlayer.self) private var audioPlayer
     @State private var draft = ""
     @State private var attachments: [RecordAttachment] = []
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -15,6 +16,7 @@ struct RecordsView: View {
     @State private var showsPencil = false
     @State private var showsPixel = false
     @State private var showsSticker = false
+    @State private var showsEnglishReading = false
     @State private var mediaError: String?
 
     var body: some View {
@@ -96,6 +98,9 @@ struct RecordsView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showsEnglishReading) {
+                EnglishReadingPracticeView()
+            }
             .alert(
                 "媒体保存失败",
                 isPresented: Binding(
@@ -109,6 +114,7 @@ struct RecordsView: View {
             }
             .onDisappear {
                 cleanupUnsavedMedia()
+                audioPlayer.stop()
             }
         }
     }
@@ -142,7 +148,7 @@ struct RecordsView: View {
                 )
             }
 
-            mediaToolbar
+            actionGrid
 
             Button {
                 saveRecord()
@@ -165,52 +171,44 @@ struct RecordsView: View {
         .trellisCard()
     }
 
-    private var mediaToolbar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                mediaButton("拍照", systemImage: "camera.fill") {
-                    cameraMode = .photo
-                    showsCamera = true
-                }
-                mediaButton("录像", systemImage: "video.fill") {
-                    cameraMode = .video
-                    showsCamera = true
-                }
+    private var actionGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("添加或创作")
+                .font(.caption.weight(.semibold))
+                .tracking(1)
+                .foregroundStyle(Color.trellisAsh)
 
-                PhotosPicker(
-                    selection: $selectedPhotos,
-                    maxSelectionCount: 10,
-                    matching: .any(of: [.images, .videos])
-                ) {
-                    Label(
-                        "照片/视频",
-                        systemImage: "photo.on.rectangle"
-                    )
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(Color.black.opacity(0.18))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-
-                mediaButton("语音", systemImage: "waveform") {
-                    showsVoiceRecorder = true
-                }
-                mediaButton(
-                    "手绘",
-                    systemImage: "pencil.tip.crop.circle"
-                ) {
-                    showsPencil = true
-                }
-                mediaButton(
-                    "像素",
-                    systemImage: "square.grid.3x3.fill"
-                ) {
-                    showsPixel = true
-                }
-                mediaButton("贴纸", systemImage: "face.smiling") {
-                    showsSticker = true
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                ],
+                spacing: 10
+            ) {
+                ForEach(RecordStudioActionCatalog.all) { action in
+                    if action.id == .library {
+                        PhotosPicker(
+                            selection: $selectedPhotos,
+                            maxSelectionCount: 10,
+                            matching: .any(of: [.images, .videos])
+                        ) {
+                            actionTile(action)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier(
+                            "record-action-\(action.id.rawValue)"
+                        )
+                    } else {
+                        Button {
+                            perform(action.id)
+                        } label: {
+                            actionTile(action)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier(
+                            "record-action-\(action.id.rawValue)"
+                        )
+                    }
                 }
             }
         }
@@ -267,20 +265,69 @@ struct RecordsView: View {
         }
     }
 
-    private func mediaButton(
-        _ title: String,
-        systemImage: String,
-        action: @escaping () -> Void
+    private func actionTile(
+        _ action: RecordStudioActionDescriptor
     ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(Color.black.opacity(0.18))
-                .clipShape(Capsule())
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: action.systemImage)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(
+                    action.isCreative
+                        ? Color.trellisJade
+                        : Color.trellisBrass
+                )
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(action.title)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Color.trellisBone)
+                    .lineLimit(1)
+
+                Text(action.detail)
+                    .font(.caption2)
+                    .foregroundStyle(Color.trellisAsh)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+        .padding(11)
+        .background(Color.black.opacity(0.18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(
+                    action.isCreative
+                        ? Color.trellisJade.opacity(0.2)
+                        : Color.white.opacity(0.06)
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 7))
+    }
+
+    private func perform(_ action: RecordStudioActionID) {
+        switch action {
+        case .camera:
+            cameraMode = .photo
+            showsCamera = true
+        case .video:
+            cameraMode = .video
+            showsCamera = true
+        case .library:
+            break
+        case .voice:
+            showsVoiceRecorder = true
+        case .drawing:
+            showsPencil = true
+        case .pixelArt:
+            showsPixel = true
+        case .stickers:
+            showsSticker = true
+        case .englishReading:
+            showsEnglishReading = true
+        }
     }
 
     private func importPhotoItems(

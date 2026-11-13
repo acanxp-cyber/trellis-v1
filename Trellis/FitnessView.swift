@@ -74,7 +74,7 @@ struct FitnessView: View {
                 .font(.system(.largeTitle, design: .serif))
                 .foregroundStyle(Color.trellisBone)
 
-            Text("50 个徒手动作，按热身、主训练和收尾分组。说“练上肢”或“练核心”，语音也会直接推荐。")
+            Text("80 个动作与运动项目，热身和收尾只保留一小组。说“练上肢”或“练核心”，语音也会直接推荐。")
                 .font(.callout)
                 .foregroundStyle(Color.trellisAsh)
         }
@@ -149,7 +149,7 @@ struct FitnessView: View {
 
                 Spacer()
 
-                Text("50 个动作")
+                Text("\(visibleExercises.count) 个动作")
                     .font(.caption)
                     .foregroundStyle(Color.trellisAsh)
             }

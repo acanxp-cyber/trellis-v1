@@ -14,8 +14,8 @@ final class EnglishReadingCatalogTests: XCTestCase {
 
         for passage in passages {
             let words = passage.english.split(whereSeparator: \.isWhitespace)
-            XCTAssertGreaterThanOrEqual(words.count, 45, passage.id)
-            XCTAssertLessThanOrEqual(words.count, 100, passage.id)
+            XCTAssertGreaterThanOrEqual(words.count, 35, passage.id)
+            XCTAssertLessThanOrEqual(words.count, 80, passage.id)
             XCTAssertFalse(passage.chinese.isEmpty, passage.id)
             XCTAssertGreaterThanOrEqual(passage.vocabulary.count, 2, passage.id)
             XCTAssertTrue(

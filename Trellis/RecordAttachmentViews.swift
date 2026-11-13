@@ -120,31 +120,18 @@ struct RecordAttachmentView: View {
 }
 
 private struct AudioAttachmentPlayer: View {
+    @Environment(LocalAudioPlayer.self) private var audioPlayer
+
     let attachment: RecordAttachment
     let store: RecordMediaStore
-
-    @State private var player: AVAudioPlayer?
-    @State private var isPlaying = false
 
     var body: some View {
         Button {
             Task {
-                if player == nil {
-                    guard
-                        let data = try? await store.data(for: attachment),
-                        let created = try? AVAudioPlayer(data: data)
-                    else {
-                        return
-                    }
-                    created.prepareToPlay()
-                    player = created
-                }
-                if isPlaying {
-                    player?.pause()
-                } else {
-                    player?.play()
-                }
-                isPlaying.toggle()
+                await audioPlayer.toggle(
+                    attachment: attachment,
+                    store: store
+                )
             }
         } label: {
             VStack(spacing: 8) {
@@ -164,6 +151,11 @@ private struct AudioAttachmentPlayer: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
+    }
+
+    private var isPlaying: Bool {
+        audioPlayer.state.attachmentID == attachment.id
+            && audioPlayer.state.isPlaying
     }
 
     private var durationText: String {
