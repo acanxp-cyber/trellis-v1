@@ -6,7 +6,7 @@ const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
 const buildVersion = process.env.TESTFLIGHT_BUILD_VERSION || "7";
 const whatsNew = process.env.TESTFLIGHT_WHATS_NEW ||
-  "请重点验证：1）记录页顶部的“手绘涂鸦、像素画布、手作贴纸、英语朗读”入口是否直接可见；2）语音记录能否暂停并反复从头回放；3）英语朗读可随机换文、查看中文和 IPA、录音后保存并回放；4）iOS 26 的提醒是否用语音播报任务标题。";
+  "请重点验证：1）文字输入时，键盘上方是否有“完成”和“存为记录”，且底栏上方输入框始终可见；2）英语朗读录音时英文原文不会被新界面遮挡；3）黑板手绘的粉笔、书法、撤销、重做和清空；4）像素画布 8×8 到 64×64 网格与 1×1 到 3×3 笔刷。";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
