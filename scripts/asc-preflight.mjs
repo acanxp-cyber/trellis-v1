@@ -75,6 +75,42 @@ const certificateResponse = await api(
   "/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&limit=200",
 );
 const allCertificateResponse = await api("/v1/certificates?limit=200");
+const app = appResponse.data?.[0] ?? null;
+const versionResponse = app
+  ? await api(
+      `/v1/apps/${app.id}/appStoreVersions?limit=50&include=build`,
+    )
+  : { data: [], included: [] };
+const buildResponse = app
+  ? await api(`/v1/builds?filter[app]=${app.id}&limit=50`)
+  : { data: [] };
+
+const versions = [];
+for (const version of versionResponse.data ?? []) {
+  const localizations = await api(
+    `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=20`,
+  );
+  versions.push({
+    id: version.id,
+    versionString: version.attributes?.versionString,
+    state: version.attributes?.appStoreState,
+    platform: version.attributes?.platform,
+    releaseType: version.attributes?.releaseType,
+    createdDate: version.attributes?.createdDate,
+    buildID: version.relationships?.build?.data?.id ?? null,
+    localizations: (localizations.data ?? []).map((localization) => ({
+      id: localization.id,
+      locale: localization.attributes?.locale,
+      descriptionLength:
+        localization.attributes?.description?.length ?? 0,
+      keywordsLength: localization.attributes?.keywords?.length ?? 0,
+      supportURL: localization.attributes?.supportUrl ?? null,
+      marketingURL: localization.attributes?.marketingUrl ?? null,
+      promotionalTextLength:
+        localization.attributes?.promotionalText?.length ?? 0,
+    })),
+  });
+}
 
 const bundleId = bundleResponse.data?.[0] ?? null;
 let profiles = [];
@@ -126,6 +162,16 @@ console.log(JSON.stringify({
     state: profile.attributes?.profileState,
     uuid: profile.attributes?.uuid,
     expirationDate: profile.attributes?.expirationDate,
+  })),
+  versions,
+  builds: (buildResponse.data ?? []).map((build) => ({
+    id: build.id,
+    version: build.attributes?.version,
+    uploadedDate: build.attributes?.uploadedDate,
+    expirationDate: build.attributes?.expirationDate,
+    expired: build.attributes?.expired,
+    processingState: build.attributes?.processingState,
+    usesNonExemptEncryption: build.attributes?.usesNonExemptEncryption,
   })),
 }, null, 2));
 
