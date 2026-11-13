@@ -130,4 +130,51 @@ final class FitnessCatalogTests: XCTestCase {
         XCTAssertFalse(FitnessCatalog.exercises(for: .cardio).isEmpty)
         XCTAssertFalse(FitnessCatalog.exercises(for: .sport).isEmpty)
     }
+
+    func testFiveMinuteWorkoutKeepsShortWarmupAndCooldown() {
+        let timing = FitnessRoutineTimingPolicy.allocate(
+            totalMinutes: 5,
+            focus: .upper
+        )
+
+        XCTAssertEqual(timing.totalSeconds, 5 * 60)
+        XCTAssertLessThanOrEqual(timing.warmupSeconds, 60)
+        XCTAssertLessThanOrEqual(timing.cooldownSeconds, 60)
+        XCTAssertGreaterThan(timing.mainSeconds, 0)
+    }
+
+    func testThirtyMinuteWorkoutCapsTransitionOverhead() {
+        let timing = FitnessRoutineTimingPolicy.allocate(
+            totalMinutes: 30,
+            focus: .fullBody
+        )
+
+        XCTAssertEqual(timing.totalSeconds, 30 * 60)
+        XCTAssertLessThanOrEqual(
+            timing.warmupSeconds + timing.cooldownSeconds,
+            120
+        )
+    }
+
+    func testMobilitySessionDoesNotAddRedundantWarmup() {
+        let timing = FitnessRoutineTimingPolicy.allocate(
+            totalMinutes: 5,
+            focus: .mobility
+        )
+
+        XCTAssertEqual(timing.warmupSeconds, 0)
+        XCTAssertEqual(timing.totalSeconds, 5 * 60)
+    }
+
+    func testExplicitWorkoutUsesAtMostOneWarmupAndOneCooldownItem() {
+        let request = WorkoutIntentParser.parse(
+            "做80个俯卧撑一组，共2组"
+        )
+        let recommendation = FitnessIntentParser.recommendation(
+            for: try! XCTUnwrap(request)
+        )
+
+        XCTAssertEqual(recommendation.blocks[0].items.count, 1)
+        XCTAssertEqual(recommendation.blocks[2].items.count, 1)
+    }
 }
