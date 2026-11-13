@@ -5,7 +5,7 @@ App Store 展示名：`SOMETHING`
 
 原生 SwiftUI 路线的 V1 工程基线。
 
-当前状态：**可继续开发的 MVP 源码与 Xcode 工程，尚未完成 iOS 编译和真机验证。**
+当前状态：**原生 MVP 已通过 macOS 模拟器构建与 XCTest，Build 12 已进入 TestFlight 内部测试；仍待真机验收系统闹钟与媒体权限。**
 
 ---
 
@@ -26,7 +26,14 @@ App Store 展示名：`SOMETHING`
 ## 当前已经落地
 
 - 原生 SwiftUI；
-- 任务、记录、周回顾、年轮和更多页；
+- 任务、语音拆任务、记录、训练、周回顾、年轮和更多页；
+- 本机中文语音识别与多任务时间线；
+- AlarmKit / 本地通知提醒、本机语音播报和系统铃声回退；
+- 温柔台湾普通话提醒声音、清晰普通话声音和关闭播报选项；
+- 80 个训练与运动项目、45 组公版双帧动作图片和本机简化动画；
+- 照片、视频、照片滤镜、语音记录、手绘、像素画、贴纸和英语朗读；
+- 8 个 Core Image 本地照片滤镜；
+- 一键清零今天未完成计划与 10 秒撤销；
 - actor 本地持久化；
 - 版本化 JSON；
 - 原子写入；
@@ -42,16 +49,13 @@ App Store 展示名：`SOMETHING`
 
 ## 当前尚未完成
 
-- 在当前 Windows 环境执行 Swift 编译；
-- macOS/Xcode 首次构建；
-- 真机 TestFlight；
-- 真实 Bundle ID 与 Team ID；
-- App 图标；
-- HealthKit；
-- 相机、相册、麦克风；
-- CloudKit；
-- StoreKit；
-- 正式隐私政策、支持页和 App Store 文案。
+- iPhone 真机的台湾女声听感校准；
+- 锁屏、静音、专注模式、蓝牙和来电打断时的闹钟验收；
+- 低电量、无系统语音、拒绝权限和存储不足等真机异常路径；
+- HealthKit 读取能力；
+- CloudKit 同步（当前架构红线禁止用于健康数据）；
+- StoreKit 与订阅；
+- 中国大陆 App 备案和大陆区发行验证。
 
 `com.acanxp.trellis` 已配置为正式 Bundle ID。
 
