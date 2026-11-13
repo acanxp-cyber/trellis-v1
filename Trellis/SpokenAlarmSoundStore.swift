@@ -40,7 +40,10 @@ enum AlarmVoiceProfile: String, CaseIterable, Identifiable, Codable, Sendable {
         case .clearMandarin:
             return "zh-CN"
         case .systemChinese:
-            return Locale.current.identifier
+            let current = Locale.current.identifier
+            return current.lowercased().hasPrefix("zh")
+                ? current
+                : "zh-CN"
         }
     }
 
@@ -204,7 +207,7 @@ final class SpokenAlarmSoundStore {
             profile: profile
         )
         let outputURL = directory.appendingPathComponent(fileName)
-        try? fileManager.removeItem(at: outputURL)
+        removeSounds(taskID: taskID)
 
         let resolution = try resolveVoice(for: profile)
         let utterance = AVSpeechUtterance(

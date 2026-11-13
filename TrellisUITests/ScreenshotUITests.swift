@@ -28,7 +28,7 @@ final class ScreenshotUITests: XCTestCase {
 
         app.buttons["tab-fitness"].tap()
         XCTAssertTrue(app.staticTexts["今天练什么？"].waitForExistence(timeout: 5))
-        capture("04-fitness")
+        capture("04-training")
 
         app.buttons["tab-more"].tap()
         XCTAssertTrue(app.staticTexts["时间线"].waitForExistence(timeout: 5))
