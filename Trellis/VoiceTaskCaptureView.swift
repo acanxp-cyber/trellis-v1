@@ -2,6 +2,7 @@ import SwiftUI
 
 struct VoiceTaskCaptureView: View {
     @Environment(AppModel.self) private var model
+    @Environment(AlarmVoicePreferences.self) private var alarmVoicePreferences
     @Environment(\.dismiss) private var dismiss
     @State private var capture = VoiceTaskCaptureModel()
     @State private var scheduler = LocalReminderScheduler()
@@ -324,7 +325,10 @@ struct VoiceTaskCaptureView: View {
             }
 
             if hasReminders {
-                let result = await scheduler.schedule(savedTasks)
+                let result = await scheduler.schedule(
+                    savedTasks,
+                    voiceSettings: alarmVoicePreferences.settings
+                )
                 if result.scheduledCount > 0 {
                     let channel = result.channel == .alarmKit
                         ? "系统闹钟"
@@ -332,7 +336,10 @@ struct VoiceTaskCaptureView: View {
                     let suffix = result.failedCount > 0
                         ? "；另有 \(result.failedCount) 个提醒设置失败"
                         : ""
-                    savedMessage = "\(savedTasks.count) 个任务已加入今天，\(result.scheduledCount) 个\(channel)已设置\(suffix)。"
+                    let fallback = result.spokenFallbackCount > 0
+                        ? "；\(result.spokenFallbackCount) 个提醒已回退为系统铃声"
+                        : ""
+                    savedMessage = "\(savedTasks.count) 个任务已加入今天，\(result.scheduledCount) 个\(channel)已设置\(suffix)\(fallback)。"
                     if result.channel == .notification {
                         savedMessage? += "普通通知可能受静音或专注模式影响。"
                     }

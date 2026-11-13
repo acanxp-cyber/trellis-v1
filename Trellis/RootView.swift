@@ -9,6 +9,7 @@ private enum AppSection: Hashable {
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(AlarmVoicePreferences.self) private var alarmVoicePreferences
     @State private var selection: AppSection = .today
     @State private var isCapturingVoice = false
 
@@ -33,7 +34,8 @@ struct RootView: View {
                 }
                 if !reminderTasks.isEmpty {
                     _ = await LocalReminderScheduler().schedule(
-                        reminderTasks
+                        reminderTasks,
+                        voiceSettings: alarmVoicePreferences.settings
                     )
                 }
             }
@@ -133,7 +135,7 @@ private struct TrellisBottomDock: View {
             HStack(spacing: 0) {
                 tab(
                     .fitness,
-                    title: "健身",
+                    title: "训练",
                     systemImage: "figure.strengthtraining.traditional"
                 )
                 tab(.more, title: "更多", systemImage: "ellipsis")

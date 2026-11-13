@@ -348,6 +348,6 @@ struct VoiceTaskParser {
         if result.hasSuffix("去"), result.count > 1 {
             result.removeLast()
         }
-        return result
+        return TaskTitleNormalizer.normalizedTitle(result)
     }
 }

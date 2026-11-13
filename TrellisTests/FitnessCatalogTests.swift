@@ -177,4 +177,21 @@ final class FitnessCatalogTests: XCTestCase {
         XCTAssertEqual(recommendation.blocks[0].items.count, 1)
         XCTAssertEqual(recommendation.blocks[2].items.count, 1)
     }
+
+    @MainActor
+    func testExerciseMediaUsesPublicDomainImagesForMappedMovements() {
+        let mappedCount = FitnessCatalog.exercises.filter {
+            ExerciseMediaCatalog.mediaID(for: $0) != nil
+        }.count
+
+        XCTAssertGreaterThanOrEqual(mappedCount, 45)
+        XCTAssertEqual(
+            ExerciseMediaCatalog.mediaID(
+                for: FitnessCatalog.exercises.first {
+                    $0.title == "罗马尼亚硬拉"
+                }!
+            ),
+            "Romanian_Deadlift"
+        )
+    }
 }

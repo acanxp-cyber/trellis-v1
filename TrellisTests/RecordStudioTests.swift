@@ -82,8 +82,86 @@ final class RecordStudioTests: XCTestCase {
             for: String(repeating: "下午两点和客户开会并确认下一版方案", count: 4)
         )
 
-        XCTAssertTrue(text.hasPrefix("提醒："))
+        XCTAssertFalse(text.hasPrefix("提醒："))
+        XCTAssertFalse(text.contains("提醒我"))
         XCTAssertLessThanOrEqual(text.count, 42)
+    }
+
+    func testSpokenAlarmSpeaksTheScheduledTimeWithoutReminderPrefix() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(
+            TimeZone(identifier: "Asia/Shanghai")
+        )
+        let date = try XCTUnwrap(
+            calendar.date(
+                from: DateComponents(
+                    year: 2026,
+                    month: 11,
+                    day: 13,
+                    hour: 12,
+                    minute: 30
+                )
+            )
+        )
+
+        let text = SpokenAlarmTextBuilder.text(
+            for: "提醒我吃饭",
+            scheduledAt: date,
+            fireDate: date,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(text, "12点半到了，吃饭囉")
+    }
+
+    func testEarlySpokenAlarmIncludesLeadTime() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(
+            TimeZone(identifier: "Asia/Shanghai")
+        )
+        let fireDate = try XCTUnwrap(
+            calendar.date(
+                from: DateComponents(
+                    year: 2026,
+                    month: 11,
+                    day: 13,
+                    hour: 12,
+                    minute: 25
+                )
+            )
+        )
+        let scheduledAt = try XCTUnwrap(
+            calendar.date(byAdding: .minute, value: 5, to: fireDate)
+        )
+
+        let text = SpokenAlarmTextBuilder.text(
+            for: "记得提醒我吃饭",
+            scheduledAt: scheduledAt,
+            fireDate: fireDate,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(text, "还有5分钟到12点半，吃饭囉")
+    }
+
+    @MainActor
+    func testAlarmVoicePreferencesUseTaiwaneseDefaultAndCanReset() {
+        let suiteName = "AlarmVoicePreferencesTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let preferences = AlarmVoicePreferences(defaults: defaults)
+        XCTAssertTrue(preferences.isSpokenAlarmEnabled)
+        XCTAssertEqual(preferences.profile, .gentleTaiwanese)
+
+        preferences.isSpokenAlarmEnabled = false
+        preferences.profile = .clearMandarin
+        preferences.resetToDefaults()
+
+        XCTAssertTrue(preferences.isSpokenAlarmEnabled)
+        XCTAssertEqual(preferences.profile, .gentleTaiwanese)
     }
 
     func testRecordStudioUsesRequestedActionOrder() {
@@ -128,6 +206,22 @@ final class RecordStudioTests: XCTestCase {
         XCTAssertEqual(
             PencilBrushPreset.allCases.map(\.title),
             ["粉笔", "书法"]
+        )
+    }
+
+    func testPhotoFilterCatalogContainsRequestedEightLooks() {
+        XCTAssertEqual(
+            PhotoFilterPreset.allCases.map(\.title),
+            [
+                "暖阳生活",
+                "清透日常",
+                "柔光胶片",
+                "银盐黑白",
+                "旧时记忆",
+                "电影青橙",
+                "金色暮光",
+                "清冷蓝调",
+            ]
         )
     }
 }

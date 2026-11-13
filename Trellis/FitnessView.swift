@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FitnessView: View {
     @Environment(AppModel.self) private var model
+    @Environment(AlarmVoicePreferences.self) private var alarmVoicePreferences
     @State private var scheduler = LocalReminderScheduler()
     @State private var selectedFocus: FitnessFocus = .upper
     @State private var scheduledAt = FitnessIntentParser.suggestedStart()
@@ -41,7 +42,7 @@ struct FitnessView: View {
                 .padding(.bottom, 16)
             }
             .background(Color.trellisInk.ignoresSafeArea())
-            .navigationTitle("健身")
+            .navigationTitle("训练")
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .automatic),
@@ -177,7 +178,10 @@ struct FitnessView: View {
                 }
                 var result: ReminderScheduleResult?
                 if let savedTask {
-                    result = await scheduler.schedule([savedTask])
+                    result = await scheduler.schedule(
+                        [savedTask],
+                        voiceSettings: alarmVoicePreferences.settings
+                    )
                 }
                 let time = scheduledAt.formatted(
                     .dateTime.month().day().hour().minute()
@@ -186,7 +190,10 @@ struct FitnessView: View {
                     let channel = result.channel == .alarmKit
                         ? "系统闹钟"
                         : "普通通知"
-                    savedMessage = "\(recommendation.title) 已加入 \(time)，并设置了\(channel)。"
+                    let fallback = result.spokenFallbackCount > 0
+                        ? " 本机没有对应的中文播报声音，已改用系统铃声。"
+                        : ""
+                    savedMessage = "\(recommendation.title) 已加入 \(time)，并设置了\(channel)。\(fallback)"
                 } else {
                     savedMessage = "\(recommendation.title) 已加入 \(time)，但没有取得提醒权限。请到系统设置中允许提醒。"
                 }

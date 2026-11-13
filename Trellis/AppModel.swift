@@ -38,7 +38,16 @@ final class AppModel {
         errorMessage = nil
 
         do {
-            data = try await repository.load()
+            let loaded = try await repository.load()
+            let normalized = Self.normalizingScheduledTaskTitles(loaded)
+            if normalized != loaded {
+                do {
+                    try await repository.save(normalized)
+                } catch {
+                    present(error)
+                }
+            }
+            data = normalized
             hasLoaded = true
         } catch {
             present(error)
@@ -116,9 +125,7 @@ final class AppModel {
     @discardableResult
     func addScheduledTasks(_ drafts: [VoiceTaskDraft]) async -> Bool {
         let tasks = drafts.compactMap { draft -> GrowthTask? in
-            let title = draft.title.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+            let title = TaskTitleNormalizer.normalizedTitle(draft.title)
             guard !title.isEmpty else {
                 return nil
             }
@@ -263,6 +270,23 @@ final class AppModel {
     private func present(_ error: Error) {
         errorMessage = (error as? LocalizedError)?.errorDescription
             ?? "操作失败，请稍后重试。"
+    }
+
+    private static func normalizingScheduledTaskTitles(
+        _ data: AppData
+    ) -> AppData {
+        var next = data
+        next.tasks = data.tasks.map { task in
+            guard task.scheduledAt != nil || task.reminderAt != nil else {
+                return task
+            }
+            var normalized = task
+            normalized.title = TaskTitleNormalizer.normalizedTitle(
+                task.title
+            )
+            return normalized
+        }
+        return next
     }
 }
 

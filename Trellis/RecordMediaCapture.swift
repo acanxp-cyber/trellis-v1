@@ -1,4 +1,6 @@
 import AVFoundation
+import CoreImage
+import CoreImage.CIFilterBuiltins
 import Observation
 import PhotosUI
 import SwiftUI
@@ -15,6 +17,301 @@ struct CapturedRecordMedia {
 enum RecordCameraMode {
     case photo
     case video
+}
+
+enum PhotoFilterPreset: String, CaseIterable, Identifiable, Sendable {
+    case warmLife
+    case clearDaily
+    case softFilm
+    case silverBlack
+    case oldMemory
+    case cinematicTealOrange
+    case goldenDusk
+    case coolBlue
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .warmLife:
+            return "暖阳生活"
+        case .clearDaily:
+            return "清透日常"
+        case .softFilm:
+            return "柔光胶片"
+        case .silverBlack:
+            return "银盐黑白"
+        case .oldMemory:
+            return "旧时记忆"
+        case .cinematicTealOrange:
+            return "电影青橙"
+        case .goldenDusk:
+            return "金色暮光"
+        case .coolBlue:
+            return "清冷蓝调"
+        }
+    }
+}
+
+struct PhotoEditRequest: Identifiable {
+    let id = UUID()
+    let data: Data
+}
+
+@MainActor
+enum PhotoFilterRenderer {
+    private static let context = CIContext()
+
+    static func render(
+        data: Data,
+        preset: PhotoFilterPreset
+    ) -> Data? {
+        guard
+            let image = UIImage(data: data),
+            let normalized = normalizedImage(image),
+            let input = CIImage(image: normalized)
+        else {
+            return nil
+        }
+
+        let output = applying(preset, to: input)
+        guard let cgImage = context.createCGImage(
+            output,
+            from: output.extent
+        ) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage).jpegData(
+            compressionQuality: 0.9
+        )
+    }
+
+    private static func applying(
+        _ preset: PhotoFilterPreset,
+        to input: CIImage
+    ) -> CIImage {
+        switch preset {
+        case .warmLife:
+            return color(
+                temperature(
+                    controls(input, saturation: 1.08, contrast: 1.04),
+                    target: 7_200
+                ),
+                brightness: 0.02
+            )
+        case .clearDaily:
+            return color(
+                controls(input, saturation: 1.03, contrast: 1.08),
+                brightness: 0.04
+            )
+        case .softFilm:
+            return softGlow(
+                color(
+                    controls(input, saturation: 0.92, contrast: 0.96),
+                    brightness: 0.035
+                )
+            )
+        case .silverBlack:
+            let noir = CIFilter.photoEffectNoir()
+            noir.inputImage = input
+            return controls(
+                noir.outputImage ?? input,
+                saturation: 1,
+                contrast: 1.1
+            )
+        case .oldMemory:
+            let transfer = CIFilter.photoEffectTransfer()
+            transfer.inputImage = input
+            let vignette = CIFilter.vignette()
+            vignette.inputImage = transfer.outputImage ?? input
+            vignette.intensity = 0.75
+            vignette.radius = 1.8
+            return vignette.outputImage ?? input
+        case .cinematicTealOrange:
+            return vignette(
+                color(
+                    controls(input, saturation: 1.12, contrast: 1.12),
+                    brightness: -0.01
+                )
+            )
+        case .goldenDusk:
+            return vignette(
+                color(
+                    temperature(
+                        controls(input, saturation: 1.04, contrast: 1.05),
+                        target: 7_800
+                    ),
+                    brightness: 0.025
+                )
+            )
+        case .coolBlue:
+            return color(
+                temperature(
+                    controls(input, saturation: 0.9, contrast: 1.08),
+                    target: 5_600
+                ),
+                brightness: -0.01
+            )
+        }
+    }
+
+    private static func controls(
+        _ image: CIImage,
+        saturation: Float,
+        contrast: Float
+    ) -> CIImage {
+        let filter = CIFilter.colorControls()
+        filter.inputImage = image
+        filter.saturation = saturation
+        filter.contrast = contrast
+        return filter.outputImage ?? image
+    }
+
+    private static func color(
+        _ image: CIImage,
+        brightness: Float
+    ) -> CIImage {
+        let filter = CIFilter.colorControls()
+        filter.inputImage = image
+        filter.brightness = brightness
+        return filter.outputImage ?? image
+    }
+
+    private static func temperature(
+        _ image: CIImage,
+        target: CGFloat
+    ) -> CIImage {
+        let filter = CIFilter.temperatureAndTint()
+        filter.inputImage = image
+        filter.neutral = CIVector(x: 6_500, y: 0)
+        filter.targetNeutral = CIVector(x: target, y: 0)
+        return filter.outputImage ?? image
+    }
+
+    private static func softGlow(_ image: CIImage) -> CIImage {
+        let bloom = CIFilter.bloom()
+        bloom.inputImage = image
+        bloom.intensity = 0.22
+        bloom.radius = 7
+        return bloom.outputImage ?? image
+    }
+
+    private static func vignette(_ image: CIImage) -> CIImage {
+        let filter = CIFilter.vignette()
+        filter.inputImage = image
+        filter.intensity = 0.55
+        filter.radius = 2
+        return filter.outputImage ?? image
+    }
+
+    private static func normalizedImage(_ image: UIImage) -> UIImage? {
+        guard image.imageOrientation != .up else {
+            return image
+        }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        format.opaque = true
+        return UIGraphicsImageRenderer(
+            size: image.size,
+            format: format
+        ).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+    }
+}
+
+struct PhotoFilterEditorView: View {
+    let sourceData: Data
+    let onSave: (Data) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var selected: PhotoFilterPreset = .warmLife
+    @State private var previewData: Data?
+    @State private var isRendering = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Group {
+                    if let previewData, let image = UIImage(data: previewData) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        ProgressView("正在处理照片")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 9) {
+                        ForEach(PhotoFilterPreset.allCases) { preset in
+                            Button {
+                                selected = preset
+                            } label: {
+                                Text(preset.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(
+                                        selected == preset
+                                            ? Color.trellisInk
+                                            : Color.trellisBone
+                                    )
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        selected == preset
+                                            ? Color.trellisBrass
+                                            : Color.trellisPlate
+                                    )
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
+                Text("滤镜只在本机处理；保存后会写入本地记录。")
+                    .font(.caption)
+                    .foregroundStyle(Color.trellisAsh)
+                    .padding(.bottom, 8)
+            }
+            .background(Color.trellisInk.ignoresSafeArea())
+            .navigationTitle("照片滤镜")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        guard let output = PhotoFilterRenderer.render(
+                            data: sourceData,
+                            preset: selected
+                        ) else {
+                            return
+                        }
+                        onSave(output)
+                        dismiss()
+                    }
+                    .disabled(previewData == nil || isRendering)
+                }
+            }
+            .task(id: selected) {
+                isRendering = true
+                previewData = PhotoFilterRenderer.render(
+                    data: sourceData,
+                    preset: selected
+                )
+                isRendering = false
+            }
+        }
+    }
 }
 
 struct RecordCameraPicker: UIViewControllerRepresentable {

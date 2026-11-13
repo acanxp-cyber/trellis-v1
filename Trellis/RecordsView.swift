@@ -13,6 +13,7 @@ struct RecordsView: View {
     @State private var isSaving = false
     @State private var cameraMode: RecordCameraMode = .photo
     @State private var showsCamera = false
+    @State private var photoToEdit: PhotoEditRequest?
     @State private var showsVoiceRecorder = false
     @State private var showsPencil = false
     @State private var showsPixel = false
@@ -57,12 +58,19 @@ struct RecordsView: View {
                     mode: cameraMode,
                     onCapture: { media in
                         showsCamera = false
-                        Task {
-                            await saveCaptured(
-                                media,
-                                kind: media.kind,
-                                fileExtension: media.fileExtension
-                            )
+                        if media.kind == .photo {
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(250))
+                                photoToEdit = PhotoEditRequest(data: media.data)
+                            }
+                        } else {
+                            Task {
+                                await saveCaptured(
+                                    media,
+                                    kind: media.kind,
+                                    fileExtension: media.fileExtension
+                                )
+                            }
                         }
                     },
                     onCancel: {
@@ -70,6 +78,17 @@ struct RecordsView: View {
                     }
                 )
                 .ignoresSafeArea()
+            }
+            .sheet(item: $photoToEdit) { request in
+                PhotoFilterEditorView(sourceData: request.data) { data in
+                    Task {
+                        await saveData(
+                            data,
+                            kind: .photo,
+                            fileExtension: "jpg"
+                        )
+                    }
+                }
             }
             .sheet(isPresented: $showsVoiceRecorder) {
                 VoiceMemoSheet { media in

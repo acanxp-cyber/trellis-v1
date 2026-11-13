@@ -191,6 +191,26 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.data.records.first?.text, "")
         XCTAssertEqual(model.data.records.first?.attachments, [attachment])
     }
+
+    func testHistoricalScheduledTitlesAreNormalizedOnLoad() async throws {
+        let repository = InMemoryRepository()
+        var data = AppData.empty
+        data.tasks = [
+            GrowthTask(
+                title: "提醒我，吃饭",
+                scheduledAt: .now,
+                reminderAt: .now
+            )
+        ]
+        try await repository.save(data)
+        let model = AppModel(repository: repository)
+
+        await model.bootstrap()
+
+        let saved = await repository.currentData()
+        XCTAssertEqual(model.data.tasks.first?.title, "吃饭")
+        XCTAssertEqual(saved.tasks.first?.title, "吃饭")
+    }
 }
 
 private actor InMemoryRepository: AppRepository {

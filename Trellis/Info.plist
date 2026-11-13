@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用于语音安排、健身指令和本地语音记录；音频不会上传。</string>
+	<string>用于语音安排、训练指令和本地语音记录；音频不会上传。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于在本地记录中拍摄照片和视频，内容不会上传。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

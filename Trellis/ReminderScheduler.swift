@@ -6,6 +6,7 @@ import UserNotifications
 struct ReminderPlan: Equatable, Sendable {
     let taskID: UUID
     let title: String
+    let scheduledAt: Date?
     let fireDate: Date
 }
 
@@ -24,7 +25,8 @@ struct ReminderPlanner {
             }
             return ReminderPlan(
                 taskID: task.id,
-                title: task.title,
+                title: TaskTitleNormalizer.normalizedTitle(task.title),
+                scheduledAt: task.scheduledAt,
                 fireDate: max(
                     reminderAt,
                     now.addingTimeInterval(1)
@@ -46,6 +48,21 @@ struct ReminderScheduleResult: Equatable, Sendable {
     let eligibleCount: Int
     let scheduledCount: Int
     let failedCount: Int
+    let spokenFallbackCount: Int
+
+    init(
+        channel: ReminderChannel,
+        eligibleCount: Int,
+        scheduledCount: Int,
+        failedCount: Int,
+        spokenFallbackCount: Int = 0
+    ) {
+        self.channel = channel
+        self.eligibleCount = eligibleCount
+        self.scheduledCount = scheduledCount
+        self.failedCount = failedCount
+        self.spokenFallbackCount = spokenFallbackCount
+    }
 
     var isAuthorized: Bool {
         channel != .unavailable
@@ -58,7 +75,11 @@ final class LocalReminderScheduler {
     private let planner = ReminderPlanner()
     private let spokenSounds = try? SpokenAlarmSoundStore.makeDefault()
 
-    func schedule(_ tasks: [GrowthTask], now: Date = .now) async -> ReminderScheduleResult {
+    func schedule(
+        _ tasks: [GrowthTask],
+        voiceSettings: AlarmVoiceSettings = .default,
+        now: Date = .now
+    ) async -> ReminderScheduleResult {
         let plans = planner.plans(for: tasks, now: now)
         guard !plans.isEmpty else {
             return ReminderScheduleResult(
@@ -81,12 +102,28 @@ final class LocalReminderScheduler {
 
         var scheduledCount = 0
         var failedCount = 0
+        var spokenFallbackCount = 0
         for plan in plans {
             do {
-                let soundName = try? await spokenSounds?.soundName(
-                    for: plan.taskID,
-                    title: plan.title
-                )
+                var soundName: String?
+                if voiceSettings.isSpokenAlarmEnabled {
+                    do {
+                        let sound = try await spokenSounds?.soundName(
+                            for: plan.taskID,
+                            title: plan.title,
+                            scheduledAt: plan.scheduledAt
+                                ?? plan.fireDate,
+                            fireDate: plan.fireDate,
+                            profile: voiceSettings.profile
+                        )
+                        soundName = sound?.fileName
+                        if sound?.usedVoiceFallback == true {
+                            spokenFallbackCount += 1
+                        }
+                    } catch {
+                        spokenFallbackCount += 1
+                    }
+                }
                 switch channel {
                 case .alarmKit:
                     if #available(iOS 26.0, *) {
@@ -115,7 +152,8 @@ final class LocalReminderScheduler {
             channel: channel,
             eligibleCount: plans.count,
             scheduledCount: scheduledCount,
-            failedCount: failedCount
+            failedCount: failedCount,
+            spokenFallbackCount: spokenFallbackCount
         )
     }
 
@@ -136,7 +174,7 @@ final class LocalReminderScheduler {
             }
         }
         for taskID in taskIDs {
-            spokenSounds?.removeSound(taskID: taskID)
+            spokenSounds?.removeSounds(taskID: taskID)
         }
     }
 
@@ -175,7 +213,9 @@ final class LocalReminderScheduler {
     ) async throws {
         try? AlarmManager.shared.cancel(id: plan.taskID)
 
-        let title = LocalizedStringResource(stringLiteral: plan.title)
+        let title = LocalizedStringResource(
+            stringLiteral: plan.title
+        )
         let snoozeButton = AlarmButton(
             text: "稍后 5 分钟",
             textColor: .white,
@@ -230,8 +270,21 @@ final class LocalReminderScheduler {
         soundName: String?
     ) async throws {
         let content = UNMutableNotificationContent()
-        content.title = "日程提醒"
-        content.body = plan.title
+        content.title = plan.title
+        if let scheduledAt = plan.scheduledAt {
+            let minutes = max(
+                0,
+                Int(
+                    (scheduledAt.timeIntervalSince(plan.fireDate) / 60)
+                        .rounded()
+                )
+            )
+            content.body = minutes > 0
+                ? "还有\(minutes)分钟"
+                : scheduledAt.formatted(.dateTime.hour().minute())
+        } else {
+            content.body = "日程提醒"
+        }
         content.sound = soundName.map {
             UNNotificationSound(
                 named: UNNotificationSoundName(rawValue: $0)

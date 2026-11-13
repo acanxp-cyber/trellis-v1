@@ -27,6 +27,7 @@ final class ReminderPlannerTests: XCTestCase {
         XCTAssertEqual(plans.count, 1)
         XCTAssertEqual(plans[0].taskID, futureTask.id)
         XCTAssertEqual(plans[0].title, "开会")
+        XCTAssertEqual(plans[0].scheduledAt, futureTask.scheduledAt)
         XCTAssertEqual(
             plans[0].fireDate,
             now.addingTimeInterval(300)
@@ -61,5 +62,21 @@ final class ReminderPlannerTests: XCTestCase {
         XCTAssertTrue(
             ReminderPlanner().plans(for: [task], now: now).isEmpty
         )
+    }
+
+    func testPlannerRemovesReminderPrefixFromExistingTitle() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let task = GrowthTask(
+            title: "记得提醒我，吃饭",
+            scheduledAt: now.addingTimeInterval(600),
+            reminderAt: now.addingTimeInterval(300)
+        )
+
+        let plan = ReminderPlanner().plans(
+            for: [task],
+            now: now
+        ).first
+
+        XCTAssertEqual(plan?.title, "吃饭")
     }
 }

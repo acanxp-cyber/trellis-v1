@@ -355,7 +355,7 @@ enum FitnessIntentParser {
             doseSummary: nil,
             summary: focus.subtitle,
             blocks: [warmup, strength, cooldown],
-            safetyNote: "这是一份一般健身建议，不替代医疗诊断或康复处方。若开始训练前已有伤病、疼痛或身体不适，请先咨询医生或合格教练。",
+            safetyNote: "这是一份一般训练建议，不替代医疗诊断或康复处方。若开始训练前已有伤病、疼痛或身体不适，请先咨询医生或合格教练。",
             matchedExerciseTitle: nil
         )
     }

@@ -24,3 +24,10 @@ AuthKey_*.p8
 apple-secrets/
 secure/
 
+# Local voice audition environment
+tools/voice-lab/.venv/
+tools/voice-lab/cache/
+tools/voice-lab/models/
+tools/voice-lab/samples/
+tools/voice-lab/__pycache__/
+

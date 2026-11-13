@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SOMETHING · 声音试听室</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e0d0b;
+      --card: #171512;
+      --line: #2c2823;
+      --text: #f3eee4;
+      --muted: #a49b8c;
+      --gold: #d4a24c;
+      --green: #6f9b7d;
+      --danger: #d16b58;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #211b13, var(--bg) 42%);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      min-height: 100vh;
+    }
+    main { max-width: 1040px; margin: 0 auto; padding: 42px 22px 80px; }
+    h1 { font-family: Georgia, "Songti SC", serif; font-size: 42px; margin: 0 0 10px; }
+    .lead { color: var(--muted); margin: 0 0 28px; line-height: 1.7; }
+    .card {
+      background: linear-gradient(145deg, #191612, #12110f);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.2);
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    label { display: block; color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+    textarea, select, input[type="range"] { width: 100%; }
+    textarea, select {
+      background: #0d0c0a;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 12px;
+      font: inherit;
+    }
+    textarea { min-height: 120px; resize: vertical; line-height: 1.7; }
+    .row { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+    .row span { color: var(--muted); font-size: 13px; min-width: 58px; }
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 16px;
+      background: var(--gold);
+      color: #17120a;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #29241d;
+      color: var(--text);
+      border: 1px solid #3b342a;
+    }
+    button:disabled { opacity: .45; cursor: wait; }
+    .voice-list { display: grid; gap: 10px; }
+    .voice {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 13px;
+      background: #12100e;
+    }
+    .voice strong { display: block; margin-bottom: 4px; }
+    .voice p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .voice .actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .voice audio { width: 250px; margin: 0; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--green);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .error { color: var(--danger); white-space: pre-wrap; font-size: 13px; }
+    audio { width: 100%; margin-top: 16px; }
+    .system-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+    .small { font-size: 12px; color: var(--muted); line-height: 1.7; }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .voice { align-items: flex-start; flex-direction: column; }
+      .voice .actions { margin-left: 0; }
+      .voice .actions { width: 100%; flex-direction: column; align-items: stretch; }
+      .voice audio { width: 100%; }
+      h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>声音试听室</h1>
+  <p class="lead">用同一句闹钟文案对比系统中文女声与 Kokoro 开源中文女声。重点听：温柔、亲密感、自然度、夜间提醒是否刺耳。</p>
+
+  <section class="card">
+    <div id="engine-status" class="pill">● 正在检查 Kokoro 引擎</div>
+    <div class="grid">
+      <div>
+        <label for="text">试听文本</label>
+        <textarea id="text">12点半到了，吃饭。</textarea>
+        <div class="row">
+          <span>语速</span>
+          <input id="speed" type="range" min="0.65" max="1.25" step="0.01" value="0.88">
+          <span id="speed-value">0.88</span>
+        </div>
+      </div>
+      <div>
+        <label>快速文本</label>
+        <select id="preset">
+          <option value="12点半到了，吃饭。">短闹钟 · 12点半吃饭</option>
+          <option value="下午两点开会，记得提前五分钟到会议室。">提前提醒 · 下午开会</option>
+          <option value="晚上十点了，放下手机，准备休息吧。">夜间低语 · 睡前提醒</option>
+          <option value="今天已经做了很多了，剩下的明天再继续。">温柔陪伴 · 放松提醒</option>
+        </select>
+        <audio id="player" controls></audio>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Kokoro 开源候选</h2>
+    <p class="small">第一次生成时会下载并加载模型，可能需要几分钟。之后同一文本会直接使用缓存。</p>
+    <div id="voices" class="voice-list"></div>
+    <div id="error" class="error"></div>
+    <div class="row">
+      <button id="generate-all" class="secondary">按顺序生成全部候选</button>
+      <button id="reload" class="secondary">重新检查引擎</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>台湾普通话试听</h2>
+    <p class="small">台湾中文口音参考：十二點半到了，吃飯囉。这里是普通话的台湾口音，不是台湾闽南语。声音由微软 Edge 在线服务生成，仅用于本地选音，不会打包进 App。</p>
+    <div class="voice-list">
+      <div class="voice">
+        <div>
+          <strong>候选 T1 · 台湾女声 · 柔和</strong>
+          <p>HsiaoChen · 语速略慢、音调略低</p>
+        </div>
+        <div class="actions">
+          <audio controls preload="metadata" src="/samples/taiwan-hsiaochen-soft.mp3"></audio>
+        </div>
+      </div>
+      <div class="voice">
+        <div>
+          <strong>候选 T2 · 台湾女声 · 清晰</strong>
+          <p>HsiaoYu · 咬字更清楚，适合信息型提醒</p>
+        </div>
+        <div class="actions">
+          <audio controls preload="metadata" src="/samples/taiwan-hsiaoyu-clear.mp3"></audio>
+        </div>
+      </div>
+      <div class="voice">
+        <div>
+          <strong>候选 T3 · 台湾男声 · 参照</strong>
+          <p>YunJhe · 用于比较台湾口音的整体语感</p>
+        </div>
+        <div class="actions">
+          <audio controls preload="metadata" src="/samples/taiwan-yunjhe-male.mp3"></audio>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Windows 系统中文语音</h2>
+    <p class="small">这是本机已安装的系统语音，可立即试听，不代表 iPhone 最终音色。</p>
+    <div class="system-row">
+      <select id="system-voice"></select>
+      <button id="system-play">试听系统语音</button>
+    </div>
+    <div class="row">
+      <span>音调</span>
+      <input id="pitch" type="range" min="0.75" max="1.25" step="0.01" value="0.96">
+      <span id="pitch-value">0.96</span>
+    </div>
+  </section>
+</main>
+<script>
+  const state = { voices: [], voiceUrls: new Map() };
+  const $ = (id) => document.getElementById(id);
+
+  fetch('/api/voices').then(r => r.json()).then(data => {
+    state.voices = data.voices || [];
+    renderVoices();
+  });
+
+  function renderVoices() {
+    const container = $('voices');
+    container.innerHTML = '';
+    for (const voice of state.voices) {
+      const row = document.createElement('div');
+      row.className = 'voice';
+      row.innerHTML = `
+        <div>
+          <strong>${voice.label}</strong>
+          <p>${voice.description}</p>
+        </div>
+        <div class="actions">
+          <button data-voice="${voice.id}">生成并试听</button>
+          <audio controls preload="none"></audio>
+        </div>
+      `;
+      row.querySelector('button').addEventListener('click', (event) => {
+        generate(event.currentTarget, true);
+      });
+      container.appendChild(row);
+    }
+  }
+
+  async function generate(button, playNow = true) {
+    const text = $('text').value.trim();
+    if (!text) return;
+    const voiceId = button.dataset.voice;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = '生成中…';
+    $('error').textContent = '';
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voice: voiceId,
+          speed: Number($('speed').value)
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '生成失败');
+      const audioResponse = await fetch(data.url);
+      const blob = await audioResponse.blob();
+      const previousVoiceUrl = state.voiceUrls.get(voiceId);
+      if (previousVoiceUrl) URL.revokeObjectURL(previousVoiceUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      state.voiceUrls.set(voiceId, objectUrl);
+      $('player').src = objectUrl;
+      const rowAudio = button.closest('.voice').querySelector('audio');
+      rowAudio.src = objectUrl;
+      if (playNow) {
+        speechSynthesis.cancel();
+        rowAudio.play();
+      }
+    } catch (error) {
+      $('error').textContent = error.message;
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  $('generate-all').addEventListener('click', async () => {
+    const buttons = [...document.querySelectorAll('[data-voice]')];
+    for (const button of buttons) {
+      await generate(button, false);
+    }
+    $('error').textContent = '';
+    buttons[0]?.closest('.voice')?.querySelector('audio')?.play();
+  });
+
+  $('speed').addEventListener('input', () => {
+    $('speed-value').textContent = $('speed').value;
+  });
+  $('pitch').addEventListener('input', () => {
+    $('pitch-value').textContent = $('pitch').value;
+  });
+  $('preset').addEventListener('change', () => {
+    $('text').value = $('preset').value;
+  });
+
+  async function checkEngine() {
+    try {
+      const response = await fetch('/health');
+      const data = await response.json();
+      $('engine-status').textContent = data.ready
+        ? '● Kokoro 已加载'
+        : '● Kokoro 按需加载';
+      if (data.ready) $('error').textContent = '';
+      if (data.error) $('error').textContent = data.error;
+    } catch {
+      $('engine-status').textContent = '● 本地服务未连接';
+    }
+  }
+  $('reload').addEventListener('click', checkEngine);
+  checkEngine();
+
+  let systemVoices = [];
+  function loadSystemVoices() {
+    systemVoices = speechSynthesis.getVoices().filter(v =>
+      /^zh/i.test(v.lang) || /Chinese|Mandarin|Xiaoxiao|Yunxi|Huihui|Yaoyao/i.test(v.name)
+    );
+    const select = $('system-voice');
+    select.innerHTML = '';
+    if (!systemVoices.length) {
+      select.innerHTML = '<option>没有检测到中文系统语音</option>';
+      return;
+    }
+    for (const voice of systemVoices) {
+      const option = document.createElement('option');
+      option.value = voice.name;
+      option.textContent = `${voice.name} · ${voice.lang}`;
+      select.appendChild(option);
+    }
+  }
+  speechSynthesis.onvoiceschanged = loadSystemVoices;
+  loadSystemVoices();
+
+  $('system-play').addEventListener('click', () => {
+    const utterance = new SpeechSynthesisUtterance($('text').value);
+    const selected = systemVoices.find(v => v.name === $('system-voice').value);
+    if (selected) utterance.voice = selected;
+    utterance.lang = selected?.lang || 'zh-CN';
+    utterance.rate = Number($('speed').value);
+    utterance.pitch = Number($('pitch').value);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+  });
+</script>
+</body>
+</html>

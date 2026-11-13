@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TodayView: View {
     @Environment(AppModel.self) private var model
+    @Environment(AlarmVoicePreferences.self) private var alarmVoicePreferences
     @State private var isAddingTask = false
     @State private var showsClearConfirmation = false
     @State private var clearReceipt: ClearPlanReceipt?
@@ -147,7 +148,10 @@ struct TodayView: View {
         guard await model.restoreClearedPlan(receipt) else {
             return
         }
-        _ = await scheduler.schedule(receipt.tasks)
+        _ = await scheduler.schedule(
+            receipt.tasks,
+            voiceSettings: alarmVoicePreferences.settings
+        )
         withAnimation {
             clearReceipt = nil
         }
