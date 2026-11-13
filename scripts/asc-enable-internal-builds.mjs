@@ -6,7 +6,7 @@ const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
 const buildVersion = process.env.TESTFLIGHT_BUILD_VERSION || "7";
 const whatsNew = process.env.TESTFLIGHT_WHATS_NEW ||
-  "请重点验证：1）文字输入时，键盘上方是否有“完成”和“存为记录”，且底栏上方输入框始终可见；2）英语朗读录音时英文原文不会被新界面遮挡；3）黑板手绘的粉笔、书法、撤销、重做和清空；4）像素画布 8×8 到 64×64 网格与 1×1 到 3×3 笔刷。";
+  "请重点验证：1）更多 > 提醒声音默认是温柔台湾普通话女声，可试听、切换、关闭和恢复默认；2）设置一分钟后提醒，锁屏后应播报“时间到了，任务内容”；3）提前五分钟提醒应播报“还有5分钟到…”，不再出现“提醒我”；4）主页入口已统一为“训练”，检查动作图片或简化动画；5）拍照后可选择8个本地滤镜；6）请分别在静音、专注模式、蓝牙耳机和来电打断后测试提醒。";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");
