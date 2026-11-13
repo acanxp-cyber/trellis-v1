@@ -6,7 +6,7 @@ const keyBase64 = process.env.APP_STORE_CONNECT_API_KEY_P8_BASE64;
 const appId = "6833441469";
 const buildVersion = process.env.TESTFLIGHT_BUILD_VERSION || "7";
 const whatsNew = process.env.TESTFLIGHT_WHATS_NEW ||
-  "请验证：1）今天页左上“清零今天”只清除未完成计划，并可在 10 秒内撤销；2）记录页可添加文字、拍照、录像、相册、语音、手绘、像素画和贴纸；3）语音说“练上肢”或明确分钟、组数、次数时，健身安排会保留你的要求。";
+  "请重点验证：1）记录页顶部的“手绘涂鸦、像素画布、手作贴纸、英语朗读”入口是否直接可见；2）语音记录能否暂停并反复从头回放；3）英语朗读可随机换文、查看中文和 IPA、录音后保存并回放；4）iOS 26 的提醒是否用语音播报任务标题。";
 
 if (!keyId || !issuerId || !keyBase64) {
   throw new Error("Missing App Store Connect API credentials.");

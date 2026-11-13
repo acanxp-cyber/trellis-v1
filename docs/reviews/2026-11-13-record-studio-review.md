@@ -2,7 +2,7 @@
 
 日期：2026-11-13  
 分支：`codex/english-alarm-studio`  
-状态：本地静态检查与 macOS 构建测试通过，等待真机验证后上传
+状态：本地静态检查与 macOS 构建测试通过，可上传 TestFlight 做真机验证
 
 ## 结论
 
