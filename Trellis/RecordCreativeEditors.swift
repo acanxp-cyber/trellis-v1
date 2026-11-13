@@ -194,16 +194,18 @@ private struct PencilCanvas: UIViewRepresentable {
             blue: 0.045,
             alpha: 1
         )
-        canvas.tool = PKInkingTool(
+        let initialTool = PKInkingTool(
             .crayon,
             color: .white,
             width: 10
         )
+        canvas.tool = initialTool
         canvas.delegate = context.coordinator
         canvas.drawing = drawing
         controller.attach(canvas)
 
         let toolPicker = PKToolPicker()
+        toolPicker.selectedTool = initialTool
         toolPicker.setVisible(true, forFirstResponder: canvas)
         toolPicker.addObserver(canvas)
         canvas.becomeFirstResponder()
@@ -428,7 +430,7 @@ struct PixelSketchEditor: View {
                 .padding(.horizontal)
             }
             .padding(.bottom)
-            .navigationTitle("像素涂鸦")
+            .navigationTitle("像素画布")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
