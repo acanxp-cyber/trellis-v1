@@ -563,7 +563,9 @@ struct StickerCanvasEditor: View {
                         get: {
                             canvas.selectedLayer?.scale ?? layer.scale
                         },
-                        set: canvas.scaleSelected
+                        set: {
+                            canvas.scaleSelected($0)
+                        }
                     ),
                     in: 0.35...3
                 )
@@ -580,7 +582,9 @@ struct StickerCanvasEditor: View {
                             canvas.selectedLayer?.rotationDegrees
                                 ?? layer.rotationDegrees
                         },
-                        set: canvas.rotateSelected
+                        set: {
+                            canvas.rotateSelected($0)
+                        }
                     ),
                     in: -180...180
                 )

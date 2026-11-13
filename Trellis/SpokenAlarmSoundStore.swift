@@ -22,6 +22,7 @@ enum SpokenAlarmSoundError: LocalizedError {
 final class SpokenAlarmSoundStore {
     private let directory: URL
     private let fileManager = FileManager.default
+    private var activeSynthesizer: AVSpeechSynthesizer?
 
     init(directory: URL) throws {
         self.directory = directory
@@ -68,6 +69,10 @@ final class SpokenAlarmSoundStore {
         utterance.postUtteranceDelay = 0.15
 
         let synthesizer = AVSpeechSynthesizer()
+        activeSynthesizer = synthesizer
+        defer {
+            activeSynthesizer = nil
+        }
         try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<Void, Error>) in
             var audioFile: AVAudioFile?

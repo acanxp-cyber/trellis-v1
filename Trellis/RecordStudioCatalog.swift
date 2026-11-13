@@ -27,30 +27,6 @@ struct RecordStudioActionDescriptor: Identifiable, Equatable, Sendable {
 enum RecordStudioActionCatalog {
     static let all: [RecordStudioActionDescriptor] = [
         .init(
-            id: .camera,
-            title: "拍照",
-            detail: "用相机留下此刻",
-            systemImage: "camera.fill"
-        ),
-        .init(
-            id: .video,
-            title: "录像",
-            detail: "拍一段本地视频",
-            systemImage: "video.fill"
-        ),
-        .init(
-            id: .library,
-            title: "照片与视频",
-            detail: "从相册选择素材",
-            systemImage: "photo.on.rectangle"
-        ),
-        .init(
-            id: .voice,
-            title: "语音记录",
-            detail: "录下声音并反复回放",
-            systemImage: "waveform"
-        ),
-        .init(
             id: .drawing,
             title: "手绘涂鸦",
             detail: "PencilKit 自由画布",
@@ -73,6 +49,30 @@ enum RecordStudioActionCatalog {
             title: "英语朗读",
             detail: "100 篇随机短文与录音",
             systemImage: "text.book.closed.fill"
+        ),
+        .init(
+            id: .camera,
+            title: "拍照",
+            detail: "用相机留下此刻",
+            systemImage: "camera.fill"
+        ),
+        .init(
+            id: .video,
+            title: "录像",
+            detail: "拍一段本地视频",
+            systemImage: "video.fill"
+        ),
+        .init(
+            id: .library,
+            title: "照片与视频",
+            detail: "从相册选择素材",
+            systemImage: "photo.on.rectangle"
+        ),
+        .init(
+            id: .voice,
+            title: "语音记录",
+            detail: "录下声音并反复回放",
+            systemImage: "waveform"
         ),
     ]
 

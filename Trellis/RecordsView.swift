@@ -192,7 +192,7 @@ struct RecordsView: View {
                             maxSelectionCount: 10,
                             matching: .any(of: [.images, .videos])
                         ) {
-                            actionTile(action)
+                            RecordActionTile(action: action)
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier(
@@ -202,7 +202,7 @@ struct RecordsView: View {
                         Button {
                             perform(action.id)
                         } label: {
-                            actionTile(action)
+                            RecordActionTile(action: action)
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier(
@@ -263,48 +263,6 @@ struct RecordsView: View {
                 }
             }
         }
-    }
-
-    private func actionTile(
-        _ action: RecordStudioActionDescriptor
-    ) -> some View {
-        HStack(alignment: .top, spacing: 9) {
-            Image(systemName: action.systemImage)
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(
-                    action.isCreative
-                        ? Color.trellisJade
-                        : Color.trellisBrass
-                )
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(action.title)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(Color.trellisBone)
-                    .lineLimit(1)
-
-                Text(action.detail)
-                    .font(.caption2)
-                    .foregroundStyle(Color.trellisAsh)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
-        .padding(11)
-        .background(Color.black.opacity(0.18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(
-                    action.isCreative
-                        ? Color.trellisJade.opacity(0.2)
-                        : Color.white.opacity(0.06)
-                )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 
     private func perform(_ action: RecordStudioActionID) {
@@ -444,5 +402,49 @@ struct RecordsView: View {
                 try? await mediaStore.delete(attachment)
             }
         }
+    }
+}
+
+private struct RecordActionTile: View {
+    let action: RecordStudioActionDescriptor
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: action.systemImage)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(
+                    action.isCreative
+                        ? Color.trellisJade
+                        : Color.trellisBrass
+                )
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(action.title)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Color.trellisBone)
+                    .lineLimit(1)
+
+                Text(action.detail)
+                    .font(.caption2)
+                    .foregroundStyle(Color.trellisAsh)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+        .padding(11)
+        .background(Color.black.opacity(0.18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(
+                    action.isCreative
+                        ? Color.trellisJade.opacity(0.2)
+                        : Color.white.opacity(0.06)
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 }
