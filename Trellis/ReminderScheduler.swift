@@ -107,20 +107,24 @@ final class LocalReminderScheduler {
             do {
                 var soundName: String?
                 if voiceSettings.isSpokenAlarmEnabled {
-                    do {
-                        let sound = try await spokenSounds?.soundName(
-                            for: plan.taskID,
-                            title: plan.title,
-                            scheduledAt: plan.scheduledAt
-                                ?? plan.fireDate,
-                            fireDate: plan.fireDate,
-                            profile: voiceSettings.profile
-                        )
-                        soundName = sound?.fileName
-                        if sound?.usedVoiceFallback == true {
+                    if let spokenSounds {
+                        do {
+                            let sound = try await spokenSounds.soundName(
+                                for: plan.taskID,
+                                title: plan.title,
+                                scheduledAt: plan.scheduledAt
+                                    ?? plan.fireDate,
+                                fireDate: plan.fireDate,
+                                profile: voiceSettings.profile
+                            )
+                            soundName = sound.fileName
+                            if sound.usedVoiceFallback {
+                                spokenFallbackCount += 1
+                            }
+                        } catch {
                             spokenFallbackCount += 1
                         }
-                    } catch {
+                    } else {
                         spokenFallbackCount += 1
                     }
                 }
