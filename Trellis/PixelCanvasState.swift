@@ -56,11 +56,23 @@ struct PixelCanvasState: Equatable, Sendable {
             for column in 0..<size {
                 let oldColumn = min(
                     oldGridSize - 1,
-                    column * oldGridSize / size
+                    Int(
+                        (
+                            Double(column)
+                                * Double(oldGridSize - 1)
+                                / Double(size - 1)
+                        ).rounded()
+                    )
                 )
                 let oldRow = min(
                     oldGridSize - 1,
-                    row * oldGridSize / size
+                    Int(
+                        (
+                            Double(row)
+                                * Double(oldGridSize - 1)
+                                / Double(size - 1)
+                        ).rounded()
+                    )
                 )
                 resized[row * size + column] =
                     oldPixels[oldRow * oldGridSize + oldColumn]
