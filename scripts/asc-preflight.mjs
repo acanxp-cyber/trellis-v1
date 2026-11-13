@@ -43,12 +43,18 @@ function makeToken() {
 
 const token = makeToken();
 
-async function api(path) {
+async function api(path, options = {}) {
+  const headers = {
+    authorization: `Bearer ${token}`,
+    accept: "application/json",
+  };
+  if (options.body !== undefined) {
+    headers["content-type"] = "application/json";
+  }
   const response = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: "application/json",
-    },
+    method: options.method ?? "GET",
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
   const text = await response.text();
   let body = null;
@@ -84,6 +90,57 @@ const versionResponse = app
 const buildResponse = app
   ? await api(`/v1/builds?filter[app]=${app.id}&limit=50`)
   : { data: [] };
+
+let buildAttachment = null;
+const appStoreVersion = process.env.APP_STORE_VERSION || "1.1";
+const requestedBuildVersion = process.env.ATTACH_BUILD_VERSION;
+if (requestedBuildVersion) {
+  const targetVersion = (versionResponse.data ?? []).find(
+    (version) => version.attributes?.versionString === appStoreVersion,
+  );
+  const targetBuild = (buildResponse.data ?? []).find(
+    (build) =>
+      build.attributes?.version === requestedBuildVersion &&
+      build.attributes?.processingState === "VALID" &&
+      !build.attributes?.expired,
+  );
+  if (!targetVersion) {
+    throw new Error(`App Store version ${appStoreVersion} was not found.`);
+  }
+  if (!targetBuild) {
+    throw new Error(`Valid build ${requestedBuildVersion} was not found.`);
+  }
+  await api(`/v1/appStoreVersions/${targetVersion.id}`, {
+    method: "PATCH",
+    body: {
+      data: {
+        type: "appStoreVersions",
+        id: targetVersion.id,
+        relationships: {
+          build: {
+            data: {
+              type: "builds",
+              id: targetBuild.id,
+            },
+          },
+        },
+      },
+    },
+  });
+  const attachedVersion = await api(
+    `/v1/appStoreVersions/${targetVersion.id}?include=build`,
+  );
+  const attachedBuild = attachedVersion.included?.find(
+    (item) => item.type === "builds",
+  );
+  buildAttachment = {
+    appStoreVersion: appStoreVersion,
+    appStoreVersionId: targetVersion.id,
+    requestedBuildVersion,
+    attachedBuildId: attachedVersion.data?.relationships?.build?.data?.id ?? null,
+    attachedBuildVersion: attachedBuild?.attributes?.version ?? null,
+  };
+}
 
 const versions = [];
 for (const version of versionResponse.data ?? []) {
@@ -163,6 +220,7 @@ console.log(JSON.stringify({
     uuid: profile.attributes?.uuid,
     expirationDate: profile.attributes?.expirationDate,
   })),
+  buildAttachment,
   versions,
   builds: (buildResponse.data ?? []).map((build) => ({
     id: build.id,

@@ -2,6 +2,15 @@ name: App Store Preflight
 
 on:
   workflow_dispatch:
+    inputs:
+      app_store_version:
+        description: App Store version to inspect
+        required: false
+        default: "1.1"
+      attach_build_version:
+        description: Build number to attach (optional)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -15,6 +24,8 @@ jobs:
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+      APP_STORE_VERSION: ${{ inputs.app_store_version || '1.1' }}
+      ATTACH_BUILD_VERSION: ${{ inputs.attach_build_version }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
