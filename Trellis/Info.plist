@@ -27,7 +27,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>用于在本地记录中拍摄照片和视频，内容不会上传。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>用于把你主动选择的照片或视频保存到本地记录。</string>
+	<string>用于把你主动选择的本机记录照片或视频导出到系统相册。</string>
 	<key>NSAlarmKitUsageDescription</key>
 	<string>用于在你选定的提醒时间响铃，确保重要安排不会因为静音或专注模式被错过。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

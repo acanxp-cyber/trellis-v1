@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct RecordsView: View {
     @Environment(AppModel.self) private var model
@@ -20,6 +21,9 @@ struct RecordsView: View {
     @State private var showsSticker = false
     @State private var showsEnglishReading = false
     @State private var mediaError: String?
+    @State private var revealedRecordID: QuickRecord.ID?
+    @State private var pendingDeletion: QuickRecord?
+    @State private var deletionTimer: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -151,10 +155,42 @@ struct RecordsView: View {
             .onDisappear {
                 cleanupUnsavedMedia()
                 audioPlayer.stop()
+                if let pendingDeletion {
+                    deletionTimer?.cancel()
+                    Task {
+                        await finalizeDeletion(pendingDeletion)
+                    }
+                }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             recordInputBar
+        }
+        .overlay(alignment: .bottom) {
+            if let pendingDeletion {
+                HStack(spacing: 14) {
+                    Text("记录已删除")
+                        .font(.callout)
+
+                    Spacer(minLength: 8)
+
+                    Button("撤销") {
+                        undoDeletion()
+                    }
+                    .font(.callout.weight(.semibold))
+                    .accessibilityIdentifier("record-delete-undo")
+                }
+                .foregroundStyle(Color.trellisBone)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.trellisDanger)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 74)
+                .transition(
+                    .move(edge: .bottom).combined(with: .opacity)
+                )
+            }
         }
     }
 
@@ -298,31 +334,134 @@ struct RecordsView: View {
                         $0.createdAt > $1.createdAt
                     }
                 ) { record in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(record.createdAt.formatted(
-                            .dateTime.month().day().hour().minute()
-                        ))
-                        .font(.caption)
-                        .tracking(0.8)
-                        .foregroundStyle(Color.trellisBrass)
-
+                    SwipeToDeleteRecordRow(
+                        recordID: record.id,
+                        revealedRecordID: $revealedRecordID,
+                        onDelete: {
+                            deleteRecord(record)
+                        }
+                    ) {
+                        recordCard(record)
+                    }
+                    .contextMenu {
                         if !record.text.isEmpty {
-                            Text(record.text)
-                                .font(.system(.body, design: .serif))
-                                .foregroundStyle(Color.trellisBone)
+                            Button("复制文字") {
+                                UIPasteboard.general.string = record.text
+                            }
+                            ShareLink(item: shareText(for: record)) {
+                                Label("分享文字", systemImage: "square.and.arrow.up")
+                            }
                         }
 
-                        if !record.attachments.isEmpty {
-                            RecordAttachmentStrip(
-                                attachments: record.attachments,
-                                store: mediaStore
-                            )
+                        Button(
+                            "删除记录",
+                            systemImage: "trash",
+                            role: .destructive
+                        ) {
+                            deleteRecord(record)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .trellisCard()
                 }
             }
+        }
+    }
+
+    private func recordCard(_ record: QuickRecord) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(record.createdAt.formatted(
+                .dateTime.month().day().hour().minute()
+            ))
+            .font(.caption)
+            .tracking(0.8)
+            .foregroundStyle(Color.trellisBrass)
+
+            if !record.text.isEmpty {
+                Text(record.text)
+                    .font(.system(.body, design: .serif))
+                    .foregroundStyle(Color.trellisBone)
+                    .textSelection(.enabled)
+            }
+
+            if !record.attachments.isEmpty {
+                RecordAttachmentStrip(
+                    attachments: record.attachments,
+                    store: mediaStore
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color.trellisPlate)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.06))
+        }
+    }
+
+    private func shareText(for record: QuickRecord) -> String {
+        let date = record.createdAt.formatted(
+            .dateTime.year().month().day().hour().minute()
+        )
+        return "\(date)\n\(record.text)"
+    }
+
+    private func deleteRecord(_ record: QuickRecord) {
+        Task {
+            guard let removed = await model.deleteRecord(id: record.id) else {
+                return
+            }
+            deletionTimer?.cancel()
+            if let previous = pendingDeletion,
+               previous.id != removed.id
+            {
+                await finalizeDeletion(previous)
+            }
+            withAnimation(.snappy) {
+                pendingDeletion = removed
+                revealedRecordID = nil
+            }
+            deletionTimer = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled,
+                      pendingDeletion?.id == removed.id
+                else {
+                    return
+                }
+                await finalizeDeletion(removed)
+            }
+        }
+    }
+
+    private func undoDeletion() {
+        deletionTimer?.cancel()
+        deletionTimer = nil
+        guard let pendingDeletion else {
+            return
+        }
+        Task {
+            _ = await model.restoreRecord(pendingDeletion)
+            withAnimation(.snappy) {
+                self.pendingDeletion = nil
+            }
+        }
+    }
+
+    @MainActor
+    private func finalizeDeletion(_ record: QuickRecord) async {
+        guard pendingDeletion?.id == record.id else {
+            return
+        }
+        if let mediaStore {
+            do {
+                try await mediaStore.deleteRecordDirectory(record.id)
+            } catch {
+                mediaError = (error as? LocalizedError)?.errorDescription
+                    ?? "记录已删除，但本地媒体清理失败。"
+            }
+        }
+        withAnimation(.snappy) {
+            pendingDeletion = nil
         }
     }
 
@@ -465,6 +604,114 @@ struct RecordsView: View {
             }
         }
     }
+}
+
+private struct SwipeToDeleteRecordRow<Content: View>: View {
+    let recordID: QuickRecord.ID
+    @Binding var revealedRecordID: QuickRecord.ID?
+    let onDelete: () -> Void
+    let content: Content
+
+    @State private var dragOffset: CGFloat = 0
+    @State private var dragAxis: DragAxis?
+
+    private let actionWidth: CGFloat = 88
+
+    init(
+        recordID: QuickRecord.ID,
+        revealedRecordID: Binding<QuickRecord.ID?>,
+        onDelete: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.recordID = recordID
+        _revealedRecordID = revealedRecordID
+        self.onDelete = onDelete
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(action: onDelete) {
+                VStack(spacing: 5) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 19, weight: .semibold))
+                    Text("删除")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(Color.trellisBone)
+                .frame(width: actionWidth)
+                .frame(maxHeight: .infinity)
+                .background(Color.trellisDanger)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("删除这条记录")
+
+            content
+                .offset(x: visibleOffset)
+                .contentShape(Rectangle())
+                .simultaneousGesture(swipeGesture)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onChange(of: revealedRecordID) { _, newValue in
+            if newValue != recordID {
+                dragOffset = 0
+            }
+        }
+    }
+
+    private var settledOffset: CGFloat {
+        revealedRecordID == recordID ? -actionWidth : 0
+    }
+
+    private var visibleOffset: CGFloat {
+        min(0, max(-actionWidth, settledOffset + dragOffset))
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                if dragAxis == nil {
+                    let horizontal = abs(value.translation.width)
+                    let vertical = abs(value.translation.height)
+                    if horizontal > vertical * 1.2 {
+                        dragAxis = .horizontal
+                    } else if vertical > horizontal * 1.2 {
+                        dragAxis = .vertical
+                    }
+                }
+                guard dragAxis == .horizontal else {
+                    return
+                }
+                dragOffset = value.translation.width
+            }
+            .onEnded { value in
+                defer {
+                    dragAxis = nil
+                    dragOffset = 0
+                }
+                guard dragAxis == .horizontal else {
+                    return
+                }
+                let finalOffset = settledOffset + value.translation.width
+                if finalOffset < -actionWidth * 1.8 {
+                    revealedRecordID = nil
+                    onDelete()
+                } else if finalOffset < -actionWidth / 2 {
+                    withAnimation(.snappy) {
+                        revealedRecordID = recordID
+                    }
+                } else {
+                    withAnimation(.snappy) {
+                        revealedRecordID = nil
+                    }
+                }
+            }
+    }
+}
+
+private enum DragAxis {
+    case horizontal
+    case vertical
 }
 
 private struct RecordActionTile: View {

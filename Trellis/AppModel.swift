@@ -180,6 +180,29 @@ final class AppModel {
     }
 
     @discardableResult
+    func deleteRecord(id: QuickRecord.ID) async -> QuickRecord? {
+        var next = data
+        guard let index = next.records.firstIndex(where: { $0.id == id }) else {
+            return nil
+        }
+        let removed = next.records.remove(at: index)
+        guard await commit(next) else {
+            return nil
+        }
+        return removed
+    }
+
+    @discardableResult
+    func restoreRecord(_ record: QuickRecord) async -> Bool {
+        guard !data.records.contains(where: { $0.id == record.id }) else {
+            return true
+        }
+        var next = data
+        next.records.append(record)
+        return await commit(next)
+    }
+
+    @discardableResult
     func completeReview(
         wins: String,
         shift: String,

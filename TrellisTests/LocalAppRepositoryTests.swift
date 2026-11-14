@@ -108,5 +108,34 @@ final class LocalAppRepositoryTests: XCTestCase {
             )
         )
     }
+
+    func testRecordMediaStoreDeletesEveryFileForARecord() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let store = try RecordMediaStore(baseDirectory: directory)
+        let recordID = UUID()
+        let photo = try await store.save(
+            Data("photo".utf8),
+            recordID: recordID,
+            kind: .photo,
+            fileExtension: "jpg"
+        )
+        let video = try await store.save(
+            Data("video".utf8),
+            recordID: recordID,
+            kind: .video,
+            fileExtension: "mov"
+        )
+        let photoURL = try await store.url(for: photo)
+        let videoURL = try await store.url(for: video)
+
+        try await store.deleteRecordDirectory(recordID)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: photoURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: videoURL.path))
+    }
 }
 

@@ -192,6 +192,32 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.data.records.first?.attachments, [attachment])
     }
 
+    func testRecordDeletionCanBeUndoneWithoutLosingMetadata() async throws {
+        let repository = InMemoryRepository()
+        let model = AppModel(repository: repository)
+        await model.bootstrap()
+        let recordID = UUID()
+        let attachment = RecordAttachment(
+            recordID: recordID,
+            kind: .pixelArt,
+            relativePath: "\(recordID.uuidString)/pixel.png"
+        )
+        _ = await model.addRecord(
+            text: "稍后可以撤销删除",
+            recordID: recordID,
+            attachments: [attachment]
+        )
+
+        let removed = await model.deleteRecord(id: recordID)
+
+        XCTAssertEqual(removed?.id, recordID)
+        XCTAssertTrue(model.data.records.isEmpty)
+
+        let didRestore = await model.restoreRecord(try XCTUnwrap(removed))
+        XCTAssertTrue(didRestore)
+        XCTAssertEqual(model.data.records.first?.attachments, [attachment])
+    }
+
     func testHistoricalScheduledTitlesAreNormalizedOnLoad() async throws {
         let repository = InMemoryRepository()
         var data = AppData.empty

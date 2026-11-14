@@ -127,6 +127,19 @@ actor RecordMediaStore {
         }
     }
 
+    func deleteRecordDirectory(_ recordID: UUID) throws {
+        let directory = baseDirectory
+            .appendingPathComponent(recordID.uuidString, isDirectory: true)
+            .standardizedFileURL
+        let basePath = baseDirectory.path + "/"
+        guard directory.path.hasPrefix(basePath) else {
+            throw RecordMediaStoreError.invalidRelativePath
+        }
+        if fileManager.fileExists(atPath: directory.path) {
+            try fileManager.removeItem(at: directory)
+        }
+    }
+
     private static func excludeFromBackup(
         _ directory: URL,
         fileManager: FileManager
